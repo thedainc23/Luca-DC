@@ -60,7 +60,7 @@ async function storeOrdersInFirestore(orders) {
 }
 
 // Route to trigger the fetch and store of Shopify orders
-router.get('/', async (req, res) => {
+router.post('/', async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
