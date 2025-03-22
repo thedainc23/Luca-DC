@@ -13,7 +13,6 @@ async function updateLoyaltyPoints(customerId, points) {
 
             loyaltyData.points += points; // Adding points, customize as needed
             await userRef.update({ loyalty: loyaltyData });
-            console.log(`Loyalty points updated for customer ${customerId}`);
         } else {
             console.log('Customer not found');
         }
@@ -26,9 +25,8 @@ async function updateLoyaltyPoints(customerId, points) {
 async function storeOrderAndCustomer(orderInfo, customerInfo) {
     try {
         const orderRef = db.collection('orders').doc(orderId.toString());
-        await orderRef.set({ orderI: orderInfo.orderId, customerId: customerInfo.customerId, orderInfo, customerInfo, timestamp: new Date() });
+        await orderRef.set({ orderId: orderInfo.orderId, customerId: customerInfo.customerId, orderInfo, customerInfo, timestamp: new Date() });
 
-        console.log(`Order ${orderId} and Customer ${customerId} stored successfully`);
     } catch (error) {
         console.error('Error storing order and customer data:', error);
     }
@@ -62,8 +60,6 @@ router.post('/webhook/orders/paid', async (req, res) => {
             email: order.customer.email,
             phone: order.customer.phone
         };
-
-        console.log(`Received paid order ${orderId} for customer ${customerId}`);
 
         // Store the order and customer ID for future reference
         await storeOrderAndCustomer(orderInfo, customerInfo);
