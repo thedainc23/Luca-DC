@@ -1,82 +1,47 @@
 const express = require('express');
-const { validationResult } = require('express-validator');
-const axios = require('axios');  // Import axios
-const db = require('../../../config/db');
+const db = require('../../../config/db'); // Firestore or database connection
+const axios = require('axios');
 const router = express.Router();
 
-const SHOPIFY_STORE = "www.dreamcatchers.com";
-const SHOPIFY_ACCESS_TOKEN = "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";  // Your token
-
-// Function to log detailed error messages
-function logError(error) {
-    if (error.response) {
-        // Log the full response error from Shopify API
-        console.error("Shopify Error Response:", error.response.data);
-        console.error("Status Code:", error.response.status); // Log status code
-    } else if (error.request) {
-        // If no response was received from Shopify API
-        console.error("No response received from Shopify:", error.request);
-    } else {
-        // Log general error message
-        console.error("Error:", error.message);
-    }
-}
-
-// Function to fetch today's orders from Shopify
-async function fetchTodaysOrders() {
+// Your loyalty program service (this will be your logic to add points)
+async function updateLoyaltyPoints(customerId, points) {
     try {
-        // Get today's date in ISO 8601 format
-        const today = new Date();
-        const startOfDay = new Date(today.setHours(0, 0, 0, 0)).toISOString();
-        const endOfDay = new Date(today.setHours(23, 59, 59, 999)).toISOString();
+        const userRef = db.collection('users').doc(customerId);
+        const userDoc = await userRef.get();
 
-        const url = `https://${SHOPIFY_STORE}/admin/api/2023-10/orders.json?created_at_min=${startOfDay}&created_at_max=${endOfDay}`;
+        if (userDoc.exists) {
+            let loyaltyData = userDoc.data().loyalty || { points: 0, stamps: 0 };
 
-        const response = await axios.get(url, {
-            headers: {
-                "X-Shopify-Access-Token": SHOPIFY_ACCESS_TOKEN,
-            },
-        });
+            loyaltyData.points += points; // Adding points, customize as needed
+            // You can also manage stamps if you have a stamp-based loyalty system
+            // loyaltyData.stamps += 1;
 
-        return response.data.orders; // Return orders for today
-    } catch (error) {
-        logError(error); // Log the error for debugging
-        throw new Error('Failed to fetch today\'s orders from Shopify.');
-    }
-}
-
-// Function to store orders in Firestore
-async function storeOrdersInFirestore(orders) {
-    try {
-        for (let order of orders) {
-            const orderRef = db.collection('orders').doc(order.id.toString());
-            await orderRef.set(order); // Store the order data in Firestore
-        }
-        console.log("Orders stored in Firestore!");
-    } catch (error) {
-        console.error("Error storing orders in Firestore:", error);
-        throw new Error('Failed to store orders in Firestore.');
-    }
-}
-
-// Route to trigger the fetch and store of Shopify orders
-router.get('/', async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-    }
-
-    try {
-        const orders = await fetchTodaysOrders(); // Fetch today's orders
-        if (orders && orders.length > 0) {
-            await storeOrdersInFirestore(orders); // Store orders in Firestore
-            return res.status(200).json({ message: 'Orders successfully fetched and stored!' });
+            await userRef.update({ loyalty: loyaltyData });
+            console.log(`Loyalty points updated for customer ${customerId}`);
         } else {
-            return res.status(404).json({ message: 'No orders found for today.' });
+            console.log('Customer not found');
         }
     } catch (error) {
-        console.error("Error in order fetching and storing process:", error);
-        return res.status(500).json({ error: error.message });
+        console.error('Error updating loyalty points:', error);
+    }
+}
+
+// Webhook route to handle incoming Shopify order creation notifications
+router.post('/webhook/orders', async (req, res) => {
+    try {
+        const order = req.body; // Shopify sends the order data in the request body
+        const orderId = order.id;
+        const customerId = order.customer.id;
+
+        console.log(`Received order ${orderId} for customer ${customerId}`);
+
+        // Process the order and update the loyalty program (points or stamps)
+        await updateLoyaltyPoints(customerId, 10); // For example, adding 10 points for every order
+
+        res.status(200).send('Order processed successfully');
+    } catch (error) {
+        console.error('Error processing order webhook:', error);
+        res.status(500).send('Internal server error');
     }
 });
 
