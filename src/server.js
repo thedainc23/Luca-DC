@@ -11,6 +11,7 @@ app.use(cors());
 
 
 // DC
+app.use('/api/dc/', require('./routes/api/DreamCatchers/'));
 app.use('/api/dc/orders', require('./routes/api/DreamCatchers/orders'));
 app.use('/api/dc/customers', require('./routes/api/DreamCatchers/customers'));
 app.use('/api/dc/loyalty', require('./routes/api/DreamCatchers/loyalty'));
