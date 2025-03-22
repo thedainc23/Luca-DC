@@ -5,7 +5,7 @@ const router = express.Router();
 // Function to update loyalty points
 async function updateLoyaltyPoints(customerId, points) {
     try {
-        const userRef = db.collection('users').doc(customerId);
+        const userRef = db.collection('loyalty').doc(`DC-${customerId.toString()}`);
         const userDoc = await userRef.get();
 
         if (userDoc.exists) {
@@ -14,7 +14,8 @@ async function updateLoyaltyPoints(customerId, points) {
             loyaltyData.points += points; // Adding points, customize as needed
             await userRef.update({ loyalty: loyaltyData });
         } else {
-            console.log('Customer not found');
+            let loyaltyData = userDoc.data().loyalty || { points: 0, stamps: 0 };
+            await userRef.update({ loyalty: loyaltyData });
         }
     } catch (error) {
         console.error('Error updating loyalty points:', error);
@@ -24,7 +25,7 @@ async function updateLoyaltyPoints(customerId, points) {
 // Function to store the order and customer ID for later reference
 async function storeOrderAndCustomer(orderInfo, customerInfo) {
     try {
-        const orderRef = db.collection('orders').doc(orderId.toString());
+        const orderRef = db.collection('loyalty').doc(`DC-${customerInfo.customerId.toString()}`);
         await orderRef.set({ orderId: orderInfo.orderId, customerId: customerInfo.customerId, orderInfo, customerInfo, timestamp: new Date() });
 
     } catch (error) {
