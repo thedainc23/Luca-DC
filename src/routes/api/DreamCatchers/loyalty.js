@@ -41,6 +41,30 @@ router.post('/webhook/orders/paid', async (req, res) => {
         const orderId = order.id;
         const customerId = order.customer.id;
 
+        // Order Information
+        const orderInfo = {
+            orderId: orderId,
+            totalPrice: order.total_price,
+            subtotalPrice: order.subtotal_price,
+            currency: order.currency,
+            createdAt: order.created_at,
+            updatedAt: order.updated_at,
+            lineItems: order.line_items.map(item => ({
+                productTitle: item.title,
+                quantity: item.quantity,
+                price: item.price
+            }))
+        };
+
+        // Customer Information
+        const customerInfo = {
+            customerId: customerId,
+            firstName: order.customer.first_name,
+            lastName: order.customer.last_name,
+            email: order.customer.email,
+            phone: order.customer.phone
+        };
+
         console.log(`Received paid order ${orderId} for customer ${customerId}`);
 
         // Store the order and customer ID for future reference
