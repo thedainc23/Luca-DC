@@ -23,10 +23,10 @@ async function updateLoyaltyPoints(customerId, points) {
 }
 
 // Function to store the order and customer ID for later reference
-async function storeOrderAndCustomer(orderId, customerId) {
+async function storeOrderAndCustomer(orderInfo, customerInfo) {
     try {
         const orderRef = db.collection('orders').doc(orderId.toString());
-        await orderRef.set({ orderId, customerId, timestamp: new Date() });
+        await orderRef.set({ orderI: orderInfo.orderId, customerId: customerInfo.customerId, orderInfo, customerInfo, timestamp: new Date() });
 
         console.log(`Order ${orderId} and Customer ${customerId} stored successfully`);
     } catch (error) {
@@ -38,12 +38,10 @@ async function storeOrderAndCustomer(orderId, customerId) {
 router.post('/webhook/orders/paid', async (req, res) => {
     try {
         const order = req.body; // Shopify sends the order data in the request body
-        const orderId = order.id;
-        const customerId = order.customer.id;
 
         // Order Information
         const orderInfo = {
-            orderId: orderId,
+            orderId: order.id,
             totalPrice: order.total_price,
             subtotalPrice: order.subtotal_price,
             currency: order.currency,
@@ -58,7 +56,7 @@ router.post('/webhook/orders/paid', async (req, res) => {
 
         // Customer Information
         const customerInfo = {
-            customerId: customerId,
+            customerId: customer.id,
             firstName: order.customer.first_name,
             lastName: order.customer.last_name,
             email: order.customer.email,
@@ -68,10 +66,10 @@ router.post('/webhook/orders/paid', async (req, res) => {
         console.log(`Received paid order ${orderId} for customer ${customerId}`);
 
         // Store the order and customer ID for future reference
-        await storeOrderAndCustomer(orderId, customerId);
+        await storeOrderAndCustomer(orderInfo, customerInfo);
 
         // Process the order and update the loyalty program (points)
-        await updateLoyaltyPoints(customerId, 10); // For example, adding 10 points for every paid order
+        await updateLoyaltyPoints(customerInfo.customerId, 10); // For example, adding 10 points for every paid order
 
         res.status(200).send('Order payment processed successfully');
     } catch (error) {
