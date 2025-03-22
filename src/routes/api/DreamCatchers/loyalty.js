@@ -56,7 +56,7 @@ router.post('/webhook/orders/paid', async (req, res) => {
 
         // Customer Information
         const customerInfo = {
-            customerId: customer.id,
+            customerId: order.customer.id,
             firstName: order.customer.first_name,
             lastName: order.customer.last_name,
             email: order.customer.email,
