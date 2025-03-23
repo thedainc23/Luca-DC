@@ -1,16 +1,14 @@
 const express = require('express');
 const db = require('../../../config/db'); // Firestore database connection
 const router = express.Router();
-
+const axios = require('axios');  // Assuming you're using axios for HTTP requests
 
 const SHOPIFY_STORE = "www.dreamcatchers.com";
 const SHOPIFY_ACCESS_TOKEN = "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";  // Your token
 
-const axios = require('axios');  // Assuming you're using axios for HTTP requests
-
-// Function to fetch product tags from Shopify using variantId
+// Function to fetch product tags directly from Shopify product API
 async function fetchProductTags(variantId) {
-    const shopifyUrl = `https://${SHOPIFY_STORE_URL}/admin/api/2023-03/products/${variantId}/metafields.json`; // Example endpoint
+    const shopifyUrl = `https://${SHOPIFY_STORE}/admin/api/2023-03/products.json?variant_ids=${variantId}`;  // Endpoint to fetch product details
 
     try {
         const response = await axios.get(shopifyUrl, {
@@ -19,8 +17,8 @@ async function fetchProductTags(variantId) {
             }
         });
 
-        // Assuming the response includes product tags
-        const productTags = response.data.metafields || [];
+        // Assuming response.data.products[0] is the product corresponding to the variantId
+        const productTags = response.data.products[0]?.tags || [];
         return productTags;
     } catch (error) {
         console.error('Error fetching product tags from Shopify:', error);
@@ -71,7 +69,6 @@ async function storeClient(customerDetails) {
 }
 
 // Function to update or create customer data, loyalty, and order history
-// Function to update or create customer data, loyalty, and order history in one document
 async function updateCustomerData(customerId, customerDetails, orderInfo, points) {
     try {
         const userRef = db.collection('customers').doc(`DC-${customerId}`);
@@ -89,7 +86,7 @@ async function updateCustomerData(customerId, customerDetails, orderInfo, points
             tags: customerDetails.tags || [],
             defaultAddress: customerDetails.defaultAddress || {},
             addresses: customerDetails.addresses || [],
-            lastOrder: orderInfo || {}, // Store last order details
+            lastOrder: orderInfo || {},
             loyalty: {
                 points: points || 0,
                 stamps: 0
@@ -100,12 +97,10 @@ async function updateCustomerData(customerId, customerDetails, orderInfo, points
 
         // Check line items for "hair_extensions" tag, and fetch if necessary
         const hairExtensionsItems = await Promise.all(orderInfo.lineItems.map(async (item) => {
-            // If item.tags exist, check for the "hair_extensions" tag
             if (item.tags && item.tags.includes("hair_extensions")) {
                 return item;
             }
 
-            // If item.tags don't exist, fetch the product tags from Shopify
             const productTags = await fetchProductTags(item.variant_id);
             if (productTags.includes("hair_extensions")) {
                 return item;
@@ -113,17 +108,12 @@ async function updateCustomerData(customerId, customerDetails, orderInfo, points
             return null;
         }));
 
-        // Filter out any null items (those without the "hair_extensions" tag)
         const hairExtensionsItemsFiltered = hairExtensionsItems.filter(item => item !== null);
-
-        // Calculate the total quantity of "hair_extensions" items
         const totalHairExtensions = hairExtensionsItemsFiltered.reduce((acc, item) => acc + item.quantity, 0);
 
-        // Add stamps based on the number of hair_extension items (1 stamp for every 5 items)
         const newStamps = Math.floor(totalHairExtensions / 5);
         customerData.loyalty.stamps += newStamps;
 
-        // If the customer exists, update their data
         if (userDoc.exists) {
             customerData = userDoc.data() || {};
             customerData.loyalty = customerData.loyalty || { points: 0, stamps: 0 };
@@ -131,27 +121,18 @@ async function updateCustomerData(customerId, customerDetails, orderInfo, points
             customerData.totalSpent = customerData.totalSpent || 0;
             customerData.ordersCount = customerData.ordersCount || 0;
 
-            // Update loyalty points
             customerData.loyalty.points += points;
-
-            // Update total spent and orders count
             customerData.totalSpent += parseFloat(orderInfo.totalPrice);
             customerData.ordersCount += 1;
-
-            // Update last order
             customerData.lastOrder = orderInfo;
-
-            // Add order to history (keeping only the last 10 orders for performance)
             customerData.orderHistory.unshift(orderInfo);
+
             if (customerData.orderHistory.length > 10) {
                 customerData.orderHistory.pop();
             }
         }
 
-        // Ensure no undefined values are passed to Firestore
         customerData.orderHistory = customerData.orderHistory.filter(order => order.orderId !== undefined);
-
-        // Save/update Firestore with merged data
         await userRef.set(customerData, { merge: true });
 
         console.log(`✅ Customer ${customerId} data updated successfully.`);
@@ -160,12 +141,10 @@ async function updateCustomerData(customerId, customerDetails, orderInfo, points
     }
 }
 
-// Webhook to handle Shopify order payment notifications
+// Webhook to handle Shopify order payment notifications// Webhook to handle Shopify order payment notifications
 router.post('/webhook/orders/paid', async (req, res) => {
     try {
         const order = req.body;
-
-        // Log the entire order to debug missing fields
         console.log("Received Order Data:", JSON.stringify(order, null, 2));
 
         // Validate required fields
@@ -199,7 +178,6 @@ router.post('/webhook/orders/paid', async (req, res) => {
             lineItems
         };
 
-        // Prepare customer details for creation (if missing)
         const customerDetails = {
             customerId: customerId,
             firstName: order.customer.first_name || "Unknown",
@@ -215,10 +193,18 @@ router.post('/webhook/orders/paid', async (req, res) => {
             lastOrder: orderInfo
         };
 
+        // If the customer doesn't exist, create the customer first
+        const userRef = db.collection('customers').doc(`DC-${customerId}`);
+        const userDoc = await userRef.get();
+        if (!userDoc.exists) {
+            // If the customer does not exist, store the customer
+            await storeClient(customerDetails);
+        }
+
         // Calculate loyalty points
         const loyaltyPoints = Math.floor(orderTotal);
 
-        // Update customer, create if missing
+        // Update customer data, including loyalty and order history
         await updateCustomerData(customerId, customerDetails, orderInfo, loyaltyPoints);
 
         res.status(200).send("✅ Order processed successfully.");
