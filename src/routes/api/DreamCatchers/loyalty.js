@@ -214,4 +214,30 @@ router.post('/webhook/orders/paid', async (req, res) => {
     }
 });
 
+
+
+
+// Express route to get loyalty points for a customer
+router.get('/api/loyalty-points/:customerId', async (req, res) => {
+    try {
+        const { customerId } = req.params;
+
+        // Query the database for loyalty points using the customerId
+        const userRef = db.collection('customers').doc(`DC-${customerId}`);
+        const userDoc = await userRef.get();
+
+        if (!userDoc.exists) {
+            return res.status(404).send({ error: 'Customer not found' });
+        }
+
+        const customerData = userDoc.data();
+        const loyaltyPoints = customerData.loyaltyPoints || 0;
+
+        res.status(200).send({ loyaltyPoints });
+    } catch (error) {
+        console.error('Error fetching loyalty points:', error);
+        res.status(500).send({ error: 'Internal server error' });
+    }
+});
+
 module.exports = router;
