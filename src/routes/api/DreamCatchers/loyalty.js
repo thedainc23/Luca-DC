@@ -33,6 +33,9 @@ async function updateCustomerData(customerId, orderInfo, points) {
             customerData.orderHistory.pop();
         }
 
+        // Ensure no undefined values are passed to Firestore
+        customerData.orderHistory = customerData.orderHistory.filter(order => order.orderId !== undefined);
+
         // Update Firestore with merged data
         await userRef.set(customerData, { merge: true });
 
@@ -47,28 +50,39 @@ router.post('/webhook/orders/paid', async (req, res) => {
     try {
         const order = req.body;
 
-        if (!order || !order.customer) {
-            console.error("❌ Invalid order or missing customer data.");
+        // Log the entire incoming order to inspect the data
+        console.log("Received Order Data:", JSON.stringify(order, null, 2));
+
+        // Validate the presence of required fields
+        if (!order || !order.customer || !order.customer.id || !order.orderId || !order.totalPrice || !order.lineItems) {
+            console.error("❌ Invalid order or missing customer data:", {
+                customerId: order.customer ? order.customer.id : 'N/A',
+                orderId: order.orderId,
+                totalPrice: order.totalPrice,
+                lineItems: order.lineItems
+            });
             return res.status(400).send("Invalid order data.");
         }
 
+        // Ensure `order.orderId`, `order.totalPrice`, and `order.lineItems` are properly accessed
         const customerId = order.customer.id;
-        const orderTotal = parseFloat(order.total_price) || 0;
+        const orderId = order.orderId; // Now using the correct field name
+        const orderTotal = parseFloat(order.totalPrice) || 0;
+        const lineItems = order.lineItems || [];
 
         // Order Information
         const orderInfo = {
-            orderId: order.id,
+            orderId: orderId,
             totalPrice: orderTotal.toFixed(2),
             currency: order.currency || "USD",
-            createdAt: order.created_at || null,
-            lineItems: order.line_items
-                ? order.line_items.map(item => ({
-                    productId: item.variant_id || null,
-                    productTitle: item.title || "Unknown Product",
-                    quantity: item.quantity || 0,
-                    price: parseFloat(item.price).toFixed(2) || "0.00"
-                }))
-                : []
+            createdAt: order.createdAt || null,
+            updatedAt: order.updatedAt || null,
+            lineItems: lineItems.map(item => ({
+                productId: item.variant_id || null,
+                productTitle: item.title || "Unknown Product",
+                quantity: item.quantity || 0,
+                price: parseFloat(item.price).toFixed(2) || "0.00"
+            }))
         };
 
         // Loyalty points = total dollars spent (can be modified as needed)
