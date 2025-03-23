@@ -218,7 +218,7 @@ router.post('/webhook/orders/paid', async (req, res) => {
 
 
 // Express route to get loyalty points for a customer
-router.get('/api/loyalty-points/:customerId', async (req, res) => {
+router.get('/loyalty-points/:customerId', async (req, res) => {
     try {
         const { customerId } = req.params;
 
