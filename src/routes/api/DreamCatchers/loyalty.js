@@ -2,48 +2,71 @@ const express = require('express');
 const db = require('../../../config/db'); // Firestore database connection
 const router = express.Router();
 
-// Function to update or create customer data, loyalty, and order history in one document
-async function updateCustomerData(customerId, orderInfo, points) {
+// Function to update or create customer data, loyalty, and order history in one documentasync function updateCustomerData(customerId, customerDetails, orderInfo, points) {
     try {
         const userRef = db.collection('customers').doc(`DC-${customerId}`);
         const userDoc = await userRef.get();
 
         let customerData = {
-            loyalty: { points: 0, stamps: 0 },
+            customerId: customerId,
+            firstName: customerDetails.firstName || "Unknown",
+            lastName: customerDetails.lastName || "Unknown",
+            email: customerDetails.email || "",
+            phone: customerDetails.phone || "",
+            totalSpent: parseFloat(customerDetails.totalSpent) || 0,
+            ordersCount: customerDetails.ordersCount || 0,
+            acceptsMarketing: customerDetails.acceptsMarketing || false,
+            tags: customerDetails.tags || [],
+            defaultAddress: customerDetails.defaultAddress || {},
+            addresses: customerDetails.addresses || [],
+            lastOrder: orderInfo || {}, // Store last order details
+            loyalty: {
+                points: points || 0,
+                stamps: 0
+            },
+            createdAt: new Date(),
             orderHistory: []
         };
 
-        // If the customer data does not exist, we will create it
-        if (!userDoc.exists) {
-            console.log(`Customer ${customerId} does not exist. Creating new customer data.`);
-            await userRef.set(customerData);
-        } else {
+        if (userDoc.exists) {
+            // If customer exists, retrieve existing data
             customerData = userDoc.data() || {};
+
+            // Ensure necessary fields exist
             customerData.loyalty = customerData.loyalty || { points: 0, stamps: 0 };
             customerData.orderHistory = customerData.orderHistory || [];
-        }
+            customerData.totalSpent = customerData.totalSpent || 0;
+            customerData.ordersCount = customerData.ordersCount || 0;
 
-        // Update loyalty points
-        customerData.loyalty.points += points;
+            // Update loyalty points
+            customerData.loyalty.points += points;
 
-        // Calculate and add stamps (1 stamp for every 5 items)
-        const totalItems = orderInfo.lineItems.reduce((acc, item) => acc + item.quantity, 0);
-        const newStamps = Math.floor(totalItems / 5);
-        customerData.loyalty.stamps += newStamps;
+            // Calculate and add stamps (1 stamp for every 5 items)
+            const totalItems = orderInfo.lineItems.reduce((acc, item) => acc + item.quantity, 0);
+            const newStamps = Math.floor(totalItems / 5);
+            customerData.loyalty.stamps += newStamps;
 
-        // Add order to history (keeping only the last 10 orders for performance)
-        customerData.orderHistory.unshift(orderInfo);
-        if (customerData.orderHistory.length > 10) {
-            customerData.orderHistory.pop();
+            // Update total spent and orders count
+            customerData.totalSpent += parseFloat(orderInfo.totalPrice);
+            customerData.ordersCount += 1;
+
+            // Update last order
+            customerData.lastOrder = orderInfo;
+
+            // Add order to history (keeping only the last 10 orders for performance)
+            customerData.orderHistory.unshift(orderInfo);
+            if (customerData.orderHistory.length > 10) {
+                customerData.orderHistory.pop();
+            }
         }
 
         // Ensure no undefined values are passed to Firestore
         customerData.orderHistory = customerData.orderHistory.filter(order => order.orderId !== undefined);
 
-        // Update Firestore with merged data
+        // Save/update Firestore with merged data
         await userRef.set(customerData, { merge: true });
 
-        console.log(`✅ Updated customer ${customerId} with order & loyalty info.`);
+        console.log(`✅ Customer ${customerId} data updated successfully.`);
     } catch (error) {
         console.error('❌ Error updating customer data:', error);
     }
