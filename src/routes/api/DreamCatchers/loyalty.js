@@ -2,7 +2,8 @@ const express = require('express');
 const db = require('../../../config/db'); // Firestore database connection
 const router = express.Router();
 
-// Function to update or create customer data, loyalty, and order history in one documentasync function updateCustomerData(customerId, customerDetails, orderInfo, points) {
+// Function to update or create customer data, loyalty, and order history in one document
+async function updateCustomerData(customerId, customerDetails, orderInfo, points) {
     try {
         const userRef = db.collection('customers').doc(`DC-${customerId}`);
         const userDoc = await userRef.get();
