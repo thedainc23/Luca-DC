@@ -81,7 +81,8 @@ router.post('/webhook/orders/paid', async (req, res) => {
                 productId: item.variant_id || null,
                 productTitle: item.title || "Unknown Product",
                 quantity: item.quantity || 0,
-                price: parseFloat(item.price).toFixed(2) || "0.00"
+                price: parseFloat(item.price).toFixed(2) || "0.00",
+                tags: item.tags || []  // Assuming `tags` is an array or field in the `item`
             }))
         };
 
