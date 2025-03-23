@@ -2,7 +2,7 @@ const express = require('express');
 const db = require('../../../config/db'); // Firestore database connection
 const router = express.Router();
 
-// Function to update customer data, loyalty, and order history in one document
+// Function to update or create customer data, loyalty, and order history in one document
 async function updateCustomerData(customerId, orderInfo, points) {
     try {
         const userRef = db.collection('customers').doc(`DC-${customerId}`);
@@ -13,7 +13,11 @@ async function updateCustomerData(customerId, orderInfo, points) {
             orderHistory: []
         };
 
-        if (userDoc.exists) {
+        // If the customer data does not exist, we will create it
+        if (!userDoc.exists) {
+            console.log(`Customer ${customerId} does not exist. Creating new customer data.`);
+            await userRef.set(customerData);
+        } else {
             customerData = userDoc.data() || {};
             customerData.loyalty = customerData.loyalty || { points: 0, stamps: 0 };
             customerData.orderHistory = customerData.orderHistory || [];
@@ -54,29 +58,29 @@ router.post('/webhook/orders/paid', async (req, res) => {
         console.log("Received Order Data:", JSON.stringify(order, null, 2));
 
         // Validate the presence of required fields
-        if (!order || !order.customer || !order.customer.id || !order.orderId || !order.totalPrice || !order.lineItems) {
+        if (!order || !order.customer || !order.customer.id || !order.id || !order.total_price || !order.line_items) {
             console.error("❌ Invalid order or missing customer data:", {
-                customerId: order.customer ? order.customer.id : 'N/A',
-                orderId: order.orderId,
-                totalPrice: order.totalPrice,
-                lineItems: order.lineItems
+                customer: order.customer,
+                orderId: order.id,
+                totalPrice: order.total_price,
+                lineItems: order.line_items
             });
             return res.status(400).send("Invalid order data.");
         }
 
-        // Ensure `order.orderId`, `order.totalPrice`, and `order.lineItems` are properly accessed
+        // Ensure `order.id`, `order.total_price`, and `order.line_items` are properly accessed
         const customerId = order.customer.id;
-        const orderId = order.orderId; // Now using the correct field name
-        const orderTotal = parseFloat(order.totalPrice) || 0;
-        const lineItems = order.lineItems || [];
+        const orderId = order.id; // Ensure this is accessed correctly
+        const orderTotal = parseFloat(order.total_price) || 0;
+        const lineItems = order.line_items || [];
 
         // Order Information
         const orderInfo = {
             orderId: orderId,
             totalPrice: orderTotal.toFixed(2),
             currency: order.currency || "USD",
-            createdAt: order.createdAt || null,
-            updatedAt: order.updatedAt || null,
+            createdAt: order.created_at || null,
+            updatedAt: order.updated_at || null,
             lineItems: lineItems.map(item => ({
                 productId: item.variant_id || null,
                 productTitle: item.title || "Unknown Product",
