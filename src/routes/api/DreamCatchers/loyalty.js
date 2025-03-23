@@ -231,7 +231,7 @@ router.get('/loyalty-points/:customerId', async (req, res) => {
         }
 
         const customerData = userDoc.data();
-        const loyaltyPoints = customerData.loyaltyPoints || 0;
+        const loyaltyPoints = customerData.loyalty.points || 0;
 
         res.status(200).send({ loyaltyPoints });
     } catch (error) {
