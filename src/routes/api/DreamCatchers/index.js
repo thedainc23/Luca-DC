@@ -38,11 +38,15 @@ router.post('/sync-shopify', async (req, res) => {
                 updated_at: product.updated_at,
                 published_at: product.published_at,
                 tags: product.tags || [],  // Collect tags, default to empty array if no tags
-                images: product.images.map(image => ({
+
+                // Ensure images is an array before calling .map()
+                images: Array.isArray(product.images) ? product.images.map(image => ({
                     src: image.src,
                     alt: image.alt || '',
-                })), // Collect all images
-                variants: product.variants.map(variant => ({
+                })) : [], // Default to empty array if no images
+
+                // Ensure variants is an array before calling .map()
+                variants: Array.isArray(product.variants) ? product.variants.map(variant => ({
                     id: variant.id,
                     title: variant.title,
                     price: variant.price,
@@ -50,15 +54,20 @@ router.post('/sync-shopify', async (req, res) => {
                     inventory_quantity: variant.inventory_quantity,
                     weight: variant.weight,
                     barcode: variant.barcode,
-                })), // Collect all variants
-                options: product.options.map(option => ({
+                })) : [], // Default to empty array if no variants
+
+                // Ensure options is an array before calling .map()
+                options: Array.isArray(product.options) ? product.options.map(option => ({
                     name: option.name,
                     values: option.values,
-                })), // Collect product options (e.g., size, color)
+                })) : [], // Default to empty array if no options
+
                 metafields: product.metafields || [],  // Collect metafields (custom data)
-                price: product.variants[0]?.price,  // Assuming the first variant's price
-                compare_at_price: product.variants[0]?.compare_at_price, // Assuming the first variant's comparison price
-                weight_unit: product.variants[0]?.weight_unit, // Assuming the first variant's weight unit
+
+                // Collect pricing and weight information from the first variant
+                price: product.variants[0]?.price,  // First variant's price
+                compare_at_price: product.variants[0]?.compare_at_price, // First variant's comparison price
+                weight_unit: product.variants[0]?.weight_unit, // First variant's weight unit
             });
             
         });
