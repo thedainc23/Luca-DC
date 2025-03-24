@@ -64,7 +64,7 @@ router.post('/sync-shopify', async (req, res) => {
                 // Ensure options is an array before calling .map()
                 options: Array.isArray(product.options) ? product.options.map(option => ({
                     name: option.name,
-                    values: option.values,
+                    values: Array.isArray(option.values) ? option.values : [], // Ensure values is an array
                 })) : [], // Default to empty array if no options
 
                 metafields: product.metafields || [],  // Collect metafields (custom data)
