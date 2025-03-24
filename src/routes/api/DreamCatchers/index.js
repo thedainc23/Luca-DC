@@ -70,8 +70,8 @@ router.post('/sync-shopify', async (req, res) => {
         return res.status(200).send({ message: 'Shopify products synced with Firebase successfully' });
 
     } catch (error) {
-        console.error('Error syncing Shopify products:', error);
-        return res.status(500).send({ error: 'Error syncing Shopify products' });
+        console.error('Error syncing Shopify products: ', error.response ? error.response.data : error.message);
+        return res.status(500).send({ error: 'Error syncing Shopify products', details: error.response ? error.response.data : error.message });
     }
 });
 
