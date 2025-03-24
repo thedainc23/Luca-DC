@@ -39,13 +39,13 @@ router.post('/sync-shopify', async (req, res) => {
                 published_at: product.published_at,
                 tags: product.tags || [],  // Collect tags, default to empty array if no tags
 
-                // Ensure images is an array before calling .map()
+                // Ensure images is an array before calling .map() and accessing index 0
                 images: Array.isArray(product.images) ? product.images.map(image => ({
                     src: image.src,
                     alt: image.alt || '',
                 })) : [], // Default to empty array if no images
 
-                // Ensure variants is an array before calling .map()
+                // Ensure variants is an array before accessing index 0
                 variants: Array.isArray(product.variants) ? product.variants.map(variant => ({
                     id: variant.id,
                     title: variant.title,
@@ -56,6 +56,11 @@ router.post('/sync-shopify', async (req, res) => {
                     barcode: variant.barcode,
                 })) : [], // Default to empty array if no variants
 
+                // Collect the first variant's price, compare_at_price, and weight_unit if available
+                price: product.variants && product.variants.length > 0 ? product.variants[0].price : null,  // First variant's price
+                compare_at_price: product.variants && product.variants.length > 0 ? product.variants[0].compare_at_price : null, // First variant's comparison price
+                weight_unit: product.variants && product.variants.length > 0 ? product.variants[0].weight_unit : null, // First variant's weight unit
+
                 // Ensure options is an array before calling .map()
                 options: Array.isArray(product.options) ? product.options.map(option => ({
                     name: option.name,
@@ -63,11 +68,6 @@ router.post('/sync-shopify', async (req, res) => {
                 })) : [], // Default to empty array if no options
 
                 metafields: product.metafields || [],  // Collect metafields (custom data)
-
-                // Collect pricing and weight information from the first variant
-                price: product.variants[0]?.price,  // First variant's price
-                compare_at_price: product.variants[0]?.compare_at_price, // First variant's comparison price
-                weight_unit: product.variants[0]?.weight_unit, // First variant's weight unit
             });
             
         });
