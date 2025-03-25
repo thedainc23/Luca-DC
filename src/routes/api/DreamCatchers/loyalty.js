@@ -76,15 +76,16 @@ async function updateCustomerData(customerId, customerDetails, orderInfo) {
         let totalFreeProducts = 0;
 
         for (const item of orderInfo.lineItems) {
-            const productTitle = item.productTitle || "";  // Default to empty string if title is missing
+            const productTitle = (item.productTitle || "").trim();  // Default to empty string if title is missing, and trim spaces
             const quantity = item.quantity || 0;  // Default to 0 if quantity is missing
-        
-            // Log the raw product title to check its value
-            console.log(`Checking raw product title: '${productTitle}'`);
-        
-            // Check if the product title contains "FREE -"
+            
+            // Log the raw product title and quantity to check its value
+            console.log(`Checking raw product title: '${productTitle}' | Quantity: ${quantity}`);
+            
+            // Check if the product title contains "FREE" (case-sensitive)
             if (productTitle.includes("FREE")) {
-                totalFreeProducts+= quantity;  // Add the quantity of matching products to the total
+                console.log(`Matched FREE product: ${productTitle} with quantity ${quantity}`);
+                totalFreeProducts += quantity;  // Add the quantity of matching products to the total
             }
         }
         
