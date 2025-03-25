@@ -101,7 +101,7 @@ async function updateCustomerData(customerId, customerDetails, orderInfo) {
             addresses: customerDetails.addresses || [],
             lastOrder: orderInfo || {},
             loyalty: {
-                points: parseFloat(totalSpent) || 0,  // Points from totalPrice of the order
+                points: totalSpent || 0,  // Points from totalPrice of the order
                 stamps: 0
             },
             createdAt: new Date(),
