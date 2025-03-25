@@ -98,6 +98,7 @@ async function updateCustomerData(customerId, customerDetails, orderInfo, points
             orderHistory: []
         };
 
+
         let totalMatchingProducts = 0;  // Total quantity for items that match productId in hair_extensions
 
         // Process each line item in the order
@@ -114,12 +115,14 @@ async function updateCustomerData(customerId, customerDetails, orderInfo, points
             // If product found in hair_extensions, increment the total matching count by the item quantity
             if (product) {
                 totalMatchingProducts += item.quantity;
+                console.log(`Matched Product ID: ${productId}, Quantity: ${item.quantity}`);
             }
         }
 
         // Calculate stamps: 1 stamp for every 5 matching items
         const newStamps = Math.floor(totalMatchingProducts / 5);
         customerData.loyalty.stamps += newStamps;  // Add stamps to the customer's loyalty points
+
 
 
         if (userDoc.exists) {
