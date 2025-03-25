@@ -111,20 +111,13 @@ async function updateCustomerData(customerId, customerDetails, orderInfo) {
 
         // Initialize total matching products count for "FREE" products
         let totalFreeProducts = 0;
-        const keywords = ["FREE", "HAIR", "EXTENSIONS"];
-        // Iterate through the line items and match products that include "FREE" in the title
+
         for (const item of orderInfo.lineItems) {
             const productTitle = item.productTitle || "";  // Default to empty string if title is missing
             const quantity = item.quantity || 0;  // Default to 0 if quantity is missing
         
             // Log the raw product title to check its value
             console.log(`Checking raw product title: '${productTitle}'`);
-        
-            // Trim any whitespace from product title before checking
-            const trimmedProductTitle = productTitle.trim();
-        
-            // Log the trimmed product title to verify no extra spaces
-            console.log(`Checking trimmed product title: '${trimmedProductTitle}'`);
         
             // Check if the product title contains "FREE -"
             if (productTitle.toUpperCase().includes("FREE -")) {
