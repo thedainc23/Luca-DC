@@ -101,7 +101,7 @@ async function updateCustomerData(customerId, customerDetails, orderInfo) {
             addresses: customerDetails.addresses || [],
             lastOrder: orderInfo || {},
             loyalty: {
-                points: totalSpent || 0,  // Points from totalPrice of the order
+                points: parseFloat(totalSpent) || 0,  // Points from totalPrice of the order
                 stamps: 0
             },
             createdAt: new Date(),
@@ -148,7 +148,7 @@ async function updateCustomerData(customerId, customerDetails, orderInfo) {
             customerData.ordersCount = customerData.ordersCount || 0;
 
             // Update the loyalty points based on the totalSpent (points = total price)
-            customerData.loyalty.points += totalSpent;  
+            customerData.loyalty.points += parseFloat(totalSpent);  
             customerData.totalSpent += totalSpent;  // Add total price to the customer's total spent
             customerData.ordersCount += 1;
             customerData.lastOrder = orderInfo;
