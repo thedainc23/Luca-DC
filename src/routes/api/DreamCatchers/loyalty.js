@@ -148,7 +148,7 @@ async function updateCustomerData(customerId, customerDetails, orderInfo) {
             customerData.ordersCount = customerData.ordersCount || 0;
 
             // Update the loyalty points based on the totalSpent (points = total price)
-            customerData.loyalty.points += parseFloat(totalSpent);  
+            customerData.loyalty.points += totalSpent;  
             customerData.totalSpent += totalSpent;  // Add total price to the customer's total spent
             customerData.ordersCount += 1;
             customerData.lastOrder = orderInfo;
