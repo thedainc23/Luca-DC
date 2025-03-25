@@ -84,7 +84,7 @@ async function updateCustomerData(customerId, customerDetails, orderInfo) {
         
             // Check if the product title contains "FREE -"
             if (productTitle.includes("FREE")) {
-                totalMatchingProductsRefunded += quantity;  // Add the quantity of matching products to the total
+                totalFreeProducts+= quantity;  // Add the quantity of matching products to the total
             }
         }
         
