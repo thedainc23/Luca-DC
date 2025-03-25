@@ -17,6 +17,17 @@ async function fetchVariantFrom4N1(variantId) {
         return null; // Return null if the variant is not found
     }
 }
+// Function to fetch product from Firestore's hair_extensions collection by productId
+async function fetchProductFromHairExtensions(productId) {
+    const productRef = db.collection('hair_extensions').doc(productId.toString());
+    const productDoc = await productRef.get();
+    
+    if (productDoc.exists) {
+        return productDoc.data();  // Return the product data if found
+    } else {
+        return null; // Return null if the product is not found
+    }
+}
 
 // Function to store a new client if they don't exist
 async function storeClient(customerDetails) {
@@ -87,28 +98,29 @@ async function updateCustomerData(customerId, customerDetails, orderInfo, points
             orderHistory: []
         };
 
-        let totalMatchingVariants = 0;  // Total quantity for items that match variants in 4N1
+        let totalMatchingProducts = 0;  // Total quantity for items that match productId in hair_extensions
 
         // Process each line item in the order
         for (const item of orderInfo.lineItems) {
-            const variantId = item.variant_id;
+            const productId = item.productId;
 
-            if (!variantId) {
-                continue; // Skip if no variant_id is present
+            if (!productId) {
+                continue; // Skip if no productId is present
             }
 
-            // Fetch the variant from Firestore's 4N1 collection by variant_id
-            const variant = await fetchVariantFrom4N1(variantId);
+            // Fetch the product from Firestore's hair_extensions collection by productId
+            const product = await fetchProductFromHairExtensions(productId);
 
-            // If variant found in 4N1, increment the total matching count by the item quantity
-            if (variant) {
-                totalMatchingVariants += item.quantity;
+            // If product found in hair_extensions, increment the total matching count by the item quantity
+            if (product) {
+                totalMatchingProducts += item.quantity;
             }
         }
 
-        // Calculate stamps: 1 stamp for every 5 items
-        const newStamps = Math.floor(totalMatchingVariants / 5);
+        // Calculate stamps: 1 stamp for every 5 matching items
+        const newStamps = Math.floor(totalMatchingProducts / 5);
         customerData.loyalty.stamps += newStamps;  // Add stamps to the customer's loyalty points
+
 
         if (userDoc.exists) {
             customerData = userDoc.data() || {};
