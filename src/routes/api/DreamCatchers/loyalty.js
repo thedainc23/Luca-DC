@@ -78,7 +78,7 @@ async function updateCustomerData(customerId, customerDetails, orderInfo) {
         for (const item of orderInfo.lineItems) {
             const productTitle = (item.name || "").trim();  // Default to empty string if title is missing, and trim spaces
             const quantity = item.quantity || 0;  // Default to 0 if quantity is missing
-            
+            console.log(productTitle)
             // Log the raw product title and quantity to check its value
             console.log(`Checking raw product title: '${productTitle}' | Quantity: ${quantity}`);
             
