@@ -248,23 +248,67 @@ router.post('/webhook/orders/paid', async (req, res) => {
 // Express route to get loyalty points for a customer
 router.post('/loyalty-points/refund', async (req, res) => {
     try {
-        const order = req.body;
-        console.log(order)
-        // Query the database for loyalty points using the customerId
-        // const userRef = db.collection('customers').doc(`DC-${customerId}`);
-        // const userDoc = await userRef.get();
+        const refundData = req.body;
+        console.log("Received Refund Data:", JSON.stringify(refundData, null, 2));
 
-        // if (!userDoc.exists) {
-        //     return res.status(404).send({ error: 'Customer not found' });
-        // }
+        // Extract necessary data from the refund payload
+        const { refund_line_items, user_id } = refundData;
+        const totalRefundAmount = refund_line_items.reduce((acc, item) => acc + parseFloat(item.subtotal), 0); // Calculate total refund amount
 
-        // const customerData = userDoc.data();
-        // const loyaltyPoints = customerData.loyalty.points || 0;
+        if (!user_id || refund_line_items.length === 0) {
+            return res.status(400).send("Invalid refund data.");
+        }
 
-        // res.status(200).send({ loyaltyPoints });
+        // Deduct points based on the total refund amount (1 point per 1 unit of refunded money)
+        const pointsToDeduct = Math.floor(totalRefundAmount); // Round to the nearest whole number
+
+        // Initialize the total quantity of matching refunded products
+        let totalMatchingProductsRefunded = 0;
+
+        // Loop through refund line items and check for keywords in the product title for stamps
+        for (const item of refund_line_items) {
+            const productTitle = item.line_item.title || '';  // Get the product title
+            const quantity = item.quantity || 0;  // Get the quantity of the item refunded
+
+            // Check if the product title contains all specified keywords for stamps
+            const keywords = ["FREE", "HAIR", "EXTENSIONS"];
+            const isMatch = keywords.every(keyword => productTitle.toUpperCase().includes(keyword));
+
+            if (isMatch) {
+                console.log(`Refunded Matching Product: ${productTitle} with quantity ${quantity}`);
+                totalMatchingProductsRefunded += quantity;  // Add the quantity of matching products to the total
+            }
+        }
+
+        // Deduct loyalty points and stamps from the customer
+        const customerRef = db.collection('customers').doc(`DC-${user_id}`);
+        const customerDoc = await customerRef.get();
+
+        if (!customerDoc.exists) {
+            return res.status(404).send("Customer not found.");
+        }
+
+        const customerData = customerDoc.data();
+        const currentPoints = customerData.loyalty.points || 0;
+        const currentStamps = customerData.loyalty.stamps || 0;
+
+        // Deduct points: Points are equal to the total refund amount
+        const updatedPoints = Math.max(currentPoints - pointsToDeduct, 0); // Ensure points don't go below 0
+
+        const stampsToDeduct = totalMatchingProductsRefunded;
+        const updatedStamps = Math.max(currentStamps - stampsToDeduct, 0); // Ensure stamps don't go below 0
+
+        // Update the customer's loyalty data
+        customerData.loyalty.points = updatedPoints;
+        customerData.loyalty.stamps = updatedStamps;
+
+        await customerRef.set(customerData, { merge: true });
+
+        console.log(`✅ Deducted ${pointsToDeduct} points and ${stampsToDeduct} stamps from customer ${user_id}`);
+        res.status(200).send("✅ Refund processed, points and stamps deducted.");
     } catch (error) {
-        console.error('Error fetching loyalty points:', error);
-        res.status(500).send({ error: 'Internal server error' });
+        console.error("❌ Error processing refund:", error);
+        res.status(500).send("Internal server error.");
     }
 });
 
