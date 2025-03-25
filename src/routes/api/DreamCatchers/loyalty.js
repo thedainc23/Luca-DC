@@ -6,23 +6,15 @@ const axios = require('axios');  // Assuming you're using axios for HTTP request
 const SHOPIFY_STORE = "www.dreamcatchers.com";
 const SHOPIFY_ACCESS_TOKEN = "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";  // Your token
 
-// Function to fetch product tags directly from Shopify product API
-async function fetchProductTags(variantId) {
-    const shopifyUrl = `https://${SHOPIFY_STORE}/admin/api/2023-03/products.json?variant_ids=${variantId}`;  // Endpoint to fetch product details
-
-    try {
-        const response = await axios.get(shopifyUrl, {
-            headers: {
-                'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN
-            }
-        });
-
-        // Assuming response.data.products[0] is the product corresponding to the variantId
-        const productTags = response.data.products[0]?.tags || [];
-        return productTags;
-    } catch (error) {
-        console.error('Error fetching product tags from Shopify:', error);
-        return [];
+// Function to fetch variants from Firestore's 4N1 collection by variant_id
+async function fetchVariantFrom4N1(variantId) {
+    const variantRef = db.collection('4N1').doc(variantId.toString());
+    const variantDoc = await variantRef.get();
+    
+    if (variantDoc.exists) {
+        return variantDoc.data();  // Return the variant data if found
+    } else {
+        return null; // Return null if the variant is not found
     }
 }
 
@@ -40,7 +32,7 @@ async function storeClient(customerDetails) {
         }
 
         // Check if loyalty data exists in separate collection
-        const loyaltyRef = db.collection('loyalty').doc(`DC-${customerId}`);
+        const loyaltyRef = db.collection('customers').doc(`DC-${customerId}`);
         const loyaltyDoc = await loyaltyRef.get();
         const loyaltyData = loyaltyDoc.exists ? loyaltyDoc.data().loyalty : { points: 0, stamps: 0 };
 
@@ -95,24 +87,28 @@ async function updateCustomerData(customerId, customerDetails, orderInfo, points
             orderHistory: []
         };
 
-        // Check line items for "hair_extensions" tag, and fetch if necessary
-        const hairExtensionsItems = await Promise.all(orderInfo.lineItems.map(async (item) => {
-            if (item.tags && item.tags.includes("hair_extensions")) {
-                return item;
+        let totalMatchingVariants = 0;  // Total quantity for items that match variants in 4N1
+
+        // Process each line item in the order
+        for (const item of orderInfo.lineItems) {
+            const variantId = item.variant_id;
+
+            if (!variantId) {
+                continue; // Skip if no variant_id is present
             }
 
-            const productTags = await fetchProductTags(item.variant_id);
-            if (productTags.includes("hair_extensions")) {
-                return item;
+            // Fetch the variant from Firestore's 4N1 collection by variant_id
+            const variant = await fetchVariantFrom4N1(variantId);
+
+            // If variant found in 4N1, increment the total matching count by the item quantity
+            if (variant) {
+                totalMatchingVariants += item.quantity;
             }
-            return null;
-        }));
+        }
 
-        const hairExtensionsItemsFiltered = hairExtensionsItems.filter(item => item !== null);
-        const totalHairExtensions = hairExtensionsItemsFiltered.reduce((acc, item) => acc + item.quantity, 0);
-
-        const newStamps = Math.floor(totalHairExtensions / 5);
-        customerData.loyalty.stamps += newStamps;
+        // Calculate stamps: 1 stamp for every 5 items
+        const newStamps = Math.floor(totalMatchingVariants / 5);
+        customerData.loyalty.stamps += newStamps;  // Add stamps to the customer's loyalty points
 
         if (userDoc.exists) {
             customerData = userDoc.data() || {};
