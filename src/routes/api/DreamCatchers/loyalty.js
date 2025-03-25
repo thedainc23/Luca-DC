@@ -41,45 +41,6 @@ async function fetchProductFromHairExtensions(productId) {
     }
 }
 
-// Function to store a new client if they don't exist
-async function storeClient(customerDetails, orderInfo) {
-    try {
-        const { customerId, firstName, lastName, email, phone, totalSpent, ordersCount, acceptsMarketing, tags, defaultAddress, addresses, lastOrder } = customerDetails;
-
-        const userRef = db.collection('customers').doc(`DC-${customerId}`);
-        const userDoc = await userRef.get();
-        const loyaltyData = { points: 0, stamps: 0 };
-
-        if (userDoc.exists) {
-            console.log(`Customer ${customerId} already exists.`);
-            return; // No need to create again
-        }
-
-     await userRef.set({
-            customerId,
-            firstName,
-            lastName,
-            email,
-            phone,
-            totalSpent: parseFloat(totalSpent) || 0,
-            ordersCount: ordersCount || 0,
-            acceptsMarketing: acceptsMarketing || false,
-            tags: tags || [],
-            defaultAddress: defaultAddress || {},
-            addresses: addresses || [],
-            lastOrder: lastOrder || {},
-            loyalty: loyaltyData,
-            createdAt: new Date(),
-            orderHistory: []
-        });
-
-        updateCustomerData(customerId, customerDetails, orderInfo);  // Update the customer data
-
-        console.log(`✅ Customer ${customerId} created successfully.`);
-    } catch (error) {
-        console.error('❌ Error storing customer data:', error);
-    }
-}
 
 // Function to update or create customer data, loyalty, and order history
 async function updateCustomerData(customerId, customerDetails, orderInfo) {
@@ -164,6 +125,49 @@ async function updateCustomerData(customerId, customerDetails, orderInfo) {
         console.error('❌ Error updating customer data:', error);
     }
 }
+
+
+
+// Function to store a new client if they don't exist
+async function storeClient(customerDetails, orderInfo) {
+    try {
+        const { customerId, firstName, lastName, email, phone, totalSpent, ordersCount, acceptsMarketing, tags, defaultAddress, addresses, lastOrder } = customerDetails;
+
+        const userRef = db.collection('customers').doc(`DC-${customerId}`);
+        const userDoc = await userRef.get();
+        const loyaltyData = { points: 0, stamps: 0 };
+
+        if (userDoc.exists) {
+            console.log(`Customer ${customerId} already exists.`);
+            return; // No need to create again
+        }
+
+     await userRef.set({
+            customerId,
+            firstName,
+            lastName,
+            email,
+            phone,
+            totalSpent: parseFloat(totalSpent) || 0,
+            ordersCount: ordersCount || 0,
+            acceptsMarketing: acceptsMarketing || false,
+            tags: tags || [],
+            defaultAddress: defaultAddress || {},
+            addresses: addresses || [],
+            lastOrder: lastOrder || {},
+            loyalty: loyaltyData,
+            createdAt: new Date(),
+            orderHistory: []
+        });
+
+        updateCustomerData(customerId, customerDetails, orderInfo);  // Update the customer data
+
+        console.log(`✅ Customer ${customerId} created successfully.`);
+    } catch (error) {
+        console.error('❌ Error storing customer data:', error);
+    }
+}
+
 
 // Webhook to handle Shopify order payment notifications
 router.post('/webhook/orders/paid', async (req, res) => {
