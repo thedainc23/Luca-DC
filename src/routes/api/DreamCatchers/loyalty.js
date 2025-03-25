@@ -115,6 +115,7 @@ async function updateCustomerData(customerId, customerDetails, orderInfo) {
         for (const item of orderInfo.lineItems) {
             const productTitle = item.productTitle || "";  // Default to empty string if title is missing
             const quantity = item.quantity || 0;  // Default to 0 if quantity is missing
+            const price = item.price || 0;  // Default to 0 if price is missing
         
             // Log the raw product title to check its value
             console.log(`Checking raw product title: '${productTitle}'`);
@@ -125,11 +126,19 @@ async function updateCustomerData(customerId, customerDetails, orderInfo) {
             // Log the trimmed product title to verify no extra spaces
             console.log(`Checking trimmed product title: '${trimmedProductTitle}'`);
         
-            // Check if productTitle contains "FREE" (case-insensitive)
-            if (trimmedProductTitle.toUpperCase().includes("FREE")) {
+            // // Check if productTitle contains "FREE" (case-insensitive)
+            // if (trimmedProductTitle.toUpperCase().includes("FREE")) {
+            //     console.log(`Matched FREE product: ${trimmedProductTitle} with quantity ${quantity}`);
+            //     totalFreeProducts += quantity;  // Count the quantity of "FREE" items
+            // } else {
+            //     console.log(`No match for FREE in product: ${trimmedProductTitle}`);
+            // }
+
+            if(price == 0 && quantity > 0){
                 console.log(`Matched FREE product: ${trimmedProductTitle} with quantity ${quantity}`);
                 totalFreeProducts += quantity;  // Count the quantity of "FREE" items
-            } else {
+            }
+            else{
                 console.log(`No match for FREE in product: ${trimmedProductTitle}`);
             }
         }
