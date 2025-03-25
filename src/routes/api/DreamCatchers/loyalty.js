@@ -83,7 +83,7 @@ async function updateCustomerData(customerId, customerDetails, orderInfo) {
             console.log(`Checking raw product title: '${productTitle}'`);
         
             // Check if the product title contains "FREE -"
-            if (productTitle.toUpperCase().includes("FREE")) {
+            if (productTitle.includes("FREE")) {
                 totalMatchingProductsRefunded += quantity;  // Add the quantity of matching products to the total
             }
         }
@@ -265,7 +265,7 @@ router.post('/loyalty-points/refund', async (req, res) => {
             const quantity = item.quantity || 0;  // Get the quantity of the item refunded
 
             // Check if the product title contains "FREE -"
-            if (productTitle.toUpperCase().includes("FREE")) {
+            if (productTitle.includes("FREE")) {
                 console.log(`Refunded Matching Product: ${productTitle} with quantity ${quantity}`);
                 totalMatchingProductsRefunded += quantity;  // Add the quantity of matching products to the total
             }
