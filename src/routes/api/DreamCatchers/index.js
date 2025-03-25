@@ -7,9 +7,10 @@ const axios = require('axios');  // HTTP client for API requests
 const SHOPIFY_STORE = 'www.dreamcatchers.com';
 const SHOPIFY_ACCESS_TOKEN = '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';
 const HAIR_COLLECTION_ID = 394059120886; // Replace with the specific collection ID you want to fetch
+// Shopify API URL to fetch products from the specific collection
+
 
 router.post('/sync-shopify', async (req, res) => {
-    // Shopify API URL to fetch products from the specific collection
     const shopifyUrl = `https://${SHOPIFY_STORE}/admin/api/2023-10/collections/${HAIR_COLLECTION_ID}/products.json`;
     try {
         // Fetch data from Shopify API
@@ -20,13 +21,14 @@ router.post('/sync-shopify', async (req, res) => {
         });
 
         const products = response.data.products;
-        
+
         // Store products in Firebase Firestore
         const batch = db.batch();  // Use batch writes for atomic operations
-        
-        products.forEach((product) => {
-            const productRef = db.collection('hair_extensions').doc(product.id.toString());
 
+        products.forEach((product) => {
+            const productRef = db.collection('shopify_products').doc(product.id.toString());
+
+            // First store the main product information
             batch.set(productRef, {
                 id: product.id,
                 title: product.title,
@@ -38,51 +40,127 @@ router.post('/sync-shopify', async (req, res) => {
                 updated_at: product.updated_at,
                 published_at: product.published_at,
                 tags: product.tags || [],  // Collect tags, default to empty array if no tags
-
-                // Ensure images is an array before calling .map() and accessing index 0
                 images: Array.isArray(product.images) ? product.images.map(image => ({
                     src: image.src,
                     alt: image.alt || '',
                 })) : [], // Default to empty array if no images
-
-                // Ensure variants is an array before accessing index 0
-                variants: Array.isArray(product.variants) ? product.variants.map(variant => ({
-                    id: variant.id,
-                    title: variant.title,
-                    price: variant.price,
-                    sku: variant.sku,
-                    inventory_quantity: variant.inventory_quantity,
-                    weight: variant.weight,
-                    barcode: variant.barcode,
-                })) : [], // Default to empty array if no variants
-
-                // Collect the first variant's price, compare_at_price, and weight_unit if available
-                price: product.variants && product.variants.length > 0 ? product.variants[0].price : null,  // First variant's price
-                compare_at_price: product.variants && product.variants.length > 0 ? product.variants[0].compare_at_price : null, // First variant's comparison price
-                weight_unit: product.variants && product.variants.length > 0 ? product.variants[0].weight_unit : null, // First variant's weight unit
-
-                // Ensure options is an array before calling .map()
+                variants: [],  // Leave variants empty here, they will be stored separately
                 options: Array.isArray(product.options) ? product.options.map(option => ({
                     name: option.name,
                     values: Array.isArray(option.values) ? option.values : [], // Ensure values is an array
                 })) : [], // Default to empty array if no options
-
                 metafields: product.metafields || [],  // Collect metafields (custom data)
             });
-            
+
+            // Now handle the variants and store them in a separate collection `4N1`
+            if (Array.isArray(product.variants)) {
+                product.variants.forEach((variant) => {
+                    const variantRef = db.collection('4N1').doc(variant.id.toString());  // Create a new document for each variant
+                    batch.set(variantRef, {
+                        product_id: product.id,  // Link to the parent product
+                        variant_id: variant.id,
+                        title: variant.title,
+                        price: variant.price,
+                        sku: variant.sku,
+                        inventory_quantity: variant.inventory_quantity,
+                        weight: variant.weight,
+                        barcode: variant.barcode,
+                        compare_at_price: variant.compare_at_price,
+                        weight_unit: variant.weight_unit,
+                    });
+                });
+            }
         });
 
-        // Commit the batch write
+        // Commit the batch write for both products and variants
         await batch.commit();
 
-        console.log('Shopify products synced with Firebase successfully');
-        return res.status(200).send({ message: 'Shopify products synced with Firebase successfully' });
+        console.log('Shopify products and variants synced with Firebase successfully');
+        return res.status(200).send({ message: 'Shopify products and variants synced with Firebase successfully' });
 
     } catch (error) {
+        // Detailed error logging
         console.error('Error syncing Shopify products: ', error.response ? error.response.data : error.message);
         return res.status(500).send({ error: 'Error syncing Shopify products', details: error.response ? error.response.data : error.message });
     }
 });
+
+
+// router.post('/sync-shopify', async (req, res) => {
+//     // Shopify API URL to fetch products from the specific collection
+//     const shopifyUrl = `https://${SHOPIFY_STORE}/admin/api/2023-10/collections/${HAIR_COLLECTION_ID}/products.json`;
+//     try {
+//         // Fetch data from Shopify API
+//         const response = await axios.get(shopifyUrl, {
+//             headers: {
+//                 'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
+//             },
+//         });
+
+//         const products = response.data.products;
+        
+//         // Store products in Firebase Firestore
+//         const batch = db.batch();  // Use batch writes for atomic operations
+        
+//         products.forEach((product) => {
+//             const productRef = db.collection('hair_extensions').doc(product.id.toString());
+
+//             batch.set(productRef, {
+//                 id: product.id,
+//                 title: product.title,
+//                 description: product.body_html,
+//                 vendor: product.vendor,
+//                 product_type: product.product_type,
+//                 handle: product.handle,
+//                 created_at: product.created_at,
+//                 updated_at: product.updated_at,
+//                 published_at: product.published_at,
+//                 tags: product.tags || [],  // Collect tags, default to empty array if no tags
+
+//                 // Ensure images is an array before calling .map() and accessing index 0
+//                 images: Array.isArray(product.images) ? product.images.map(image => ({
+//                     src: image.src,
+//                     alt: image.alt || '',
+//                 })) : [], // Default to empty array if no images
+
+//                 // Ensure variants is an array before accessing index 0
+//                 variants: Array.isArray(product.variants) ? product.variants.map(variant => ({
+//                     id: variant.id,
+//                     title: variant.title,
+//                     price: variant.price,
+//                     sku: variant.sku,
+//                     inventory_quantity: variant.inventory_quantity,
+//                     weight: variant.weight,
+//                     barcode: variant.barcode,
+//                 })) : [], // Default to empty array if no variants
+
+//                 // Collect the first variant's price, compare_at_price, and weight_unit if available
+//                 price: product.variants && product.variants.length > 0 ? product.variants[0].price : null,  // First variant's price
+//                 compare_at_price: product.variants && product.variants.length > 0 ? product.variants[0].compare_at_price : null, // First variant's comparison price
+//                 weight_unit: product.variants && product.variants.length > 0 ? product.variants[0].weight_unit : null, // First variant's weight unit
+
+//                 // Ensure options is an array before calling .map()
+//                 options: Array.isArray(product.options) ? product.options.map(option => ({
+//                     name: option.name,
+//                     values: Array.isArray(option.values) ? option.values : [], // Ensure values is an array
+//                 })) : [], // Default to empty array if no options
+
+//                 metafields: product.metafields || [],  // Collect metafields (custom data)
+//             });
+            
+//         });
+
+//         // Commit the batch write
+//         await batch.commit();
+
+//         console.log('Shopify products synced with Firebase successfully');
+//         return res.status(200).send({ message: 'Shopify products synced with Firebase successfully' });
+
+//     } catch (error) {
+//         console.error('Error syncing Shopify products: ', error.response ? error.response.data : error.message);
+//         return res.status(500).send({ error: 'Error syncing Shopify products', details: error.response ? error.response.data : error.message });
+//     }
+// });
 
 
 
