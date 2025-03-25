@@ -19,13 +19,25 @@ async function fetchVariantFrom4N1(variantId) {
 }
 // Function to fetch product from Firestore's hair_extensions collection by productId
 async function fetchProductFromHairExtensions(productId) {
-    const productRef = db.collection('hair_extensions').doc(productId.toString());
-    const productDoc = await productRef.get();
-    
-    if (productDoc.exists) {
-        return productDoc.data();  // Return the product data if found
-    } else {
-        return null; // Return null if the product is not found
+    if (!productId) {
+        console.error('❌ Invalid productId: ', productId);
+        return null;  // Return null if the productId is invalid or missing
+    }
+
+    try {
+        const productRef = db.collection('hair_extensions').doc(productId.toString());
+        const productDoc = await productRef.get();
+
+        if (productDoc.exists) {
+            console.log(`✅ Product found: ${productId}`);
+            return productDoc.data();  // Return the product data if found
+        } else {
+            console.warn(`⚠️ Product not found: ${productId}`);
+            return null;  // Return null if the product does not exist
+        }
+    } catch (error) {
+        console.error(`❌ Error fetching product ${productId}: `, error);
+        return null;  // Return null in case of any error during the Firestore fetch
     }
 }
 
@@ -98,26 +110,25 @@ async function updateCustomerData(customerId, customerDetails, orderInfo, points
             orderHistory: []
         };
 
+           // Initialize total matching products count
+           let totalMatchingProducts = 0;
 
-        let totalMatchingProducts = 0;  // Total quantity for items that match productId in hair_extensions
-
-        // Process each line item in the order
-        for (const item of orderInfo.lineItems) {
-            const productId = item.productId;
-
-            if (!productId) {
-                continue; // Skip if no productId is present
-            }
-
-            // Fetch the product from Firestore's hair_extensions collection by productId
-            const product = await fetchProductFromHairExtensions(productId);
-
-            // If product found in hair_extensions, increment the total matching count by the item quantity
-            if (product) {
-                totalMatchingProducts += item.quantity;
-                console.log(`Matched Product ID: ${productId}, Quantity: ${item.quantity}`);
-            }
-        }
+           // Iterate through the line items and match products
+           for (const item of lineItems) {
+               const productId = item.product_id;
+               const quantity = item.quantity;
+   
+               if (!productId) continue;  // Skip if no product ID
+   
+               // Fetch the product from the hair_extensions collection
+               const product = await fetchProductFromHairExtensions(productId);
+   
+               // If product is found in hair_extensions, count the quantity for stamps
+               if (product) {
+                   console.log(`Matched Product ID: ${productId} with quantity ${quantity}`);
+                   totalMatchingProducts += quantity;
+               }
+           }
 
         // Calculate stamps: 1 stamp for every 5 matching items
         const newStamps = Math.floor(totalMatchingProducts / 5);
