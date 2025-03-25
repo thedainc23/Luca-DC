@@ -48,6 +48,7 @@ async function storeClient(customerDetails) {
 
         const userRef = db.collection('customers').doc(`DC-${customerId}`);
         const userDoc = await userRef.get();
+        const loyaltyData = { points: 0, stamps: 0 };
 
         if (userDoc.exists) {
             console.log(`Customer ${customerId} already exists.`);
