@@ -9,7 +9,6 @@ const SHOPIFY_ACCESS_TOKEN = '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';
 const HAIR_COLLECTION_ID = 394059120886; // Replace with the specific collection ID you want to fetch
 // Shopify API URL to fetch products from the specific collection
 
-
 router.post('/sync-shopify', async (req, res) => {
     const shopifyUrl = `https://${SHOPIFY_STORE}/admin/api/2023-10/collections/${HAIR_COLLECTION_ID}/products.json`;
 
@@ -61,6 +60,7 @@ router.post('/sync-shopify', async (req, res) => {
                 product.variants.forEach((variant) => {
                     const variantRef = db.collection('4N1').doc(variant.id.toString());  // Create a new document for each variant
                     
+                    // Store variant information
                     batch.set(variantRef, {
                         product_id: product.id,  // Link to the parent product
                         variant_id: variant.id,
@@ -69,9 +69,13 @@ router.post('/sync-shopify', async (req, res) => {
                         sku: variant.sku,
                         inventory_quantity: variant.inventory_quantity,
                         weight: variant.weight,
-                        barcode: variant.barcode,
-                        compare_at_price: variant.compare_at_price,
                         weight_unit: variant.weight_unit,
+                        barcode: variant.barcode || '', // Null safe
+                        compare_at_price: variant.compare_at_price,
+                        created_at: variant.created_at,
+                        updated_at: variant.updated_at,
+                        image_id: variant.image_id || '', // Null safe
+                        admin_graphql_api_id: variant.admin_graphql_api_id,
                     });
                 });
             } else {
@@ -91,6 +95,7 @@ router.post('/sync-shopify', async (req, res) => {
         return res.status(500).send({ error: 'Error syncing Shopify products', details: error.response ? error.response.data : error.message });
     }
 });
+
 
 
 // router.post('/sync-shopify', async (req, res) => {
