@@ -114,7 +114,7 @@ async function updateCustomerData(customerId, customerDetails, orderInfo) {
 
         for (const item of orderInfo.lineItems) {
             const productTitle = item.productTitle || "";  // Default to empty string if title is missing
-            const quantity = item.quantity || 0;  // Default to 0 if quantity is missing
+            const quantity = item.quantity || 1;  // Default to 0 if quantity is missing
             const price = item.price || 0;  // Default to 0 if price is missing
         
             // Log the raw product title to check its value
