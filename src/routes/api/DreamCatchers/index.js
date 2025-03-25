@@ -12,6 +12,7 @@ const HAIR_COLLECTION_ID = 394059120886; // Replace with the specific collection
 
 router.post('/sync-shopify', async (req, res) => {
     const shopifyUrl = `https://${SHOPIFY_STORE}/admin/api/2023-10/collections/${HAIR_COLLECTION_ID}/products.json`;
+
     try {
         // Fetch data from Shopify API
         const response = await axios.get(shopifyUrl, {
@@ -22,11 +23,15 @@ router.post('/sync-shopify', async (req, res) => {
 
         const products = response.data.products;
 
-        // Store products in Firebase Firestore
-        const batch = db.batch();  // Use batch writes for atomic operations
+        if (!products || products.length === 0) {
+            return res.status(200).send({ message: 'No products found in the specified collection' });
+        }
+
+        // Initialize a batch write to Firebase Firestore
+        const batch = db.batch();
 
         products.forEach((product) => {
-            const productRef = db.collection('shopify_products').doc(product.id.toString());
+            const productRef = db.collection('hair_extensions').doc(product.id.toString());
 
             // First store the main product information
             batch.set(productRef, {
@@ -39,12 +44,11 @@ router.post('/sync-shopify', async (req, res) => {
                 created_at: product.created_at,
                 updated_at: product.updated_at,
                 published_at: product.published_at,
-                tags: product.tags || [],  // Collect tags, default to empty array if no tags
+                tags: product.tags ? product.tags.split(',') : [], // Store tags as an array
                 images: Array.isArray(product.images) ? product.images.map(image => ({
                     src: image.src,
                     alt: image.alt || '',
-                })) : [], // Default to empty array if no images
-                variants: [],  // Leave variants empty here, they will be stored separately
+                })) : [], // Ensure images are in array format
                 options: Array.isArray(product.options) ? product.options.map(option => ({
                     name: option.name,
                     values: Array.isArray(option.values) ? option.values : [], // Ensure values is an array
@@ -53,9 +57,10 @@ router.post('/sync-shopify', async (req, res) => {
             });
 
             // Now handle the variants and store them in a separate collection `4N1`
-            if (Array.isArray(product.variants)) {
+            if (Array.isArray(product.variants) && product.variants.length > 0) {
                 product.variants.forEach((variant) => {
                     const variantRef = db.collection('4N1').doc(variant.id.toString());  // Create a new document for each variant
+                    
                     batch.set(variantRef, {
                         product_id: product.id,  // Link to the parent product
                         variant_id: variant.id,
@@ -69,6 +74,8 @@ router.post('/sync-shopify', async (req, res) => {
                         weight_unit: variant.weight_unit,
                     });
                 });
+            } else {
+                console.log(`No variants found for product: ${product.id}`);  // Logging for products with no variants
             }
         });
 
