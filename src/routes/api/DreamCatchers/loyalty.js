@@ -75,19 +75,19 @@ async function updateCustomerData(customerId, customerDetails, orderInfo) {
         // Initialize total matching products count for "FREE" products
         let totalFreeProducts = 0;
 
-        // for (const item of orderInfo.lineItems) {
-        //     const productTitle = (item.productTitle || "").trim();  // Default to empty string if title is missing, and trim spaces
-        //     const quantity = item.quantity || 0;  // Default to 0 if quantity is missing
+        for (const item of orderInfo.lineItems) {
+            const productTitle = (item.name || "").trim();  // Default to empty string if title is missing, and trim spaces
+            const quantity = item.quantity || 0;  // Default to 0 if quantity is missing
             
-        //     // Log the raw product title and quantity to check its value
-        //     console.log(`Checking raw product title: '${productTitle}' | Quantity: ${quantity}`);
+            // Log the raw product title and quantity to check its value
+            console.log(`Checking raw product title: '${productTitle}' | Quantity: ${quantity}`);
             
-        //     // Check if the product title contains "FREE" (case-sensitive)
-        //     if (productTitle.includes("FREE")) {
-        //         console.log(`Matched FREE product: ${productTitle} with quantity ${quantity}`);
-        //         totalFreeProducts += quantity;  // Add the quantity of matching products to the total
-        //     }
-        // }
+            // Check if the product title contains "FREE" (case-sensitive)
+            if (productTitle.includes("FREE -")) {
+                console.log(`Matched FREE product: ${productTitle} with quantity ${quantity}`);
+                totalFreeProducts += quantity;  // Add the quantity of matching products to the total
+            }
+        }
         // for (const item of orderInfo.lineItems) {
         //     const rawTitle = item.productTitle || "";
         //     const productTitle = rawTitle.replace(/\s+/g, ' ').trim();  // Sanitize the product title
@@ -112,21 +112,21 @@ async function updateCustomerData(customerId, customerDetails, orderInfo) {
         //     }
         // }
         // Iterate through each line item in the order
-        for (const item of orderInfo.lineItems) {
-            const quantity = item.quantity || 1;  // Default to 1 if quantity is missing
-            const price = parseFloat(item.price) || 0;  // Convert price to a number (handle string prices as well)
+        // for (const item of orderInfo.lineItems) {
+        //     const quantity = item.quantity || 1;  // Default to 1 if quantity is missing
+        //     const price = parseFloat(item.price) || 0;  // Convert price to a number (handle string prices as well)
 
-            // Log the quantity and price to debug
-            console.log(`Checking product: Quantity = ${quantity}, Price = ${price}`);
+        //     // Log the quantity and price to debug
+        //     console.log(`Checking product: Quantity = ${quantity}, Price = ${price}`);
 
-            // Check if the price is 0 (indicating a free product) and quantity is greater than 0
-            if (price === 0 && quantity > 0) {
-                console.log(`Matched FREE product with quantity ${quantity}`);
-                totalFreeProducts += quantity;  // Add quantity to totalFreeProducts count
-            } else {
-                console.log(`No match for FREE product. Price: ${price}, Quantity: ${quantity}`);
-            }
-        }
+        //     // Check if the price is 0 (indicating a free product) and quantity is greater than 0
+        //     if (price === 0 && quantity > 0) {
+        //         console.log(`Matched FREE product with quantity ${quantity}`);
+        //         totalFreeProducts += quantity;  // Add quantity to totalFreeProducts count
+        //     } else {
+        //         console.log(`No match for FREE product. Price: ${price}, Quantity: ${quantity}`);
+        //     }
+        // }
 
 
 
