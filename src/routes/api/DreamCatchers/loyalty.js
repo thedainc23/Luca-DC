@@ -54,12 +54,7 @@ async function storeClient(customerDetails) {
             return; // No need to create again
         }
 
-        // Check if loyalty data exists in separate collection
-        const loyaltyRef = db.collection('customers').doc(`DC-${customerId}`);
-        const loyaltyDoc = await loyaltyRef.get();
-        const loyaltyData = loyaltyDoc.exists ? loyaltyDoc.data().loyalty : { points: 0, stamps: 0 };
-
-        await userRef.set({
+     await userRef.set({
             customerId,
             firstName,
             lastName,
