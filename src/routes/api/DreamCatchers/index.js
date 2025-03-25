@@ -13,7 +13,7 @@ router.post('/sync-shopify', async (req, res) => {
     const shopifyUrl = `https://${SHOPIFY_STORE}/admin/api/2023-10/collections/${HAIR_COLLECTION_ID}/products.json`;
 
     try {
-        // Fetch data from Shopify API
+        // Fetch products from the collection
         const response = await axios.get(shopifyUrl, {
             headers: {
                 'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
@@ -29,7 +29,8 @@ router.post('/sync-shopify', async (req, res) => {
         // Initialize a batch write to Firebase Firestore
         const batch = db.batch();
 
-        products.forEach((product) => {
+        // Loop through products
+        for (const product of products) {
             const productRef = db.collection('hair_extensions').doc(product.id.toString());
 
             // First store the main product information
@@ -55,33 +56,47 @@ router.post('/sync-shopify', async (req, res) => {
                 metafields: product.metafields || [],  // Collect metafields (custom data)
             });
 
-            // Now handle the variants and store them in a separate collection `4N1`
-            if (Array.isArray(product.variants) && product.variants.length > 0) {
-                product.variants.forEach((variant) => {
-                    const variantRef = db.collection('4N1').doc(variant.id.toString());  // Create a new document for each variant
-                    
-                    // Store variant information
-                    batch.set(variantRef, {
-                        product_id: product.id,  // Link to the parent product
-                        variant_id: variant.id,
-                        title: variant.title,
-                        price: variant.price,
-                        sku: variant.sku,
-                        inventory_quantity: variant.inventory_quantity,
-                        weight: variant.weight,
-                        weight_unit: variant.weight_unit,
-                        barcode: variant.barcode || '', // Null safe
-                        compare_at_price: variant.compare_at_price,
-                        created_at: variant.created_at,
-                        updated_at: variant.updated_at,
-                        image_id: variant.image_id || '', // Null safe
-                        admin_graphql_api_id: variant.admin_graphql_api_id,
-                    });
+            // Fetch variants for the product
+            const variantUrl = `https://${SHOPIFY_STORE}/admin/api/2023-10/products/${product.id}/variants.json`;
+            try {
+                const variantResponse = await axios.get(variantUrl, {
+                    headers: {
+                        'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
+                    },
                 });
-            } else {
-                console.log(`No variants found for product: ${product.id}`);  // Logging for products with no variants
+
+                const variants = variantResponse.data.variants;
+
+                if (Array.isArray(variants) && variants.length > 0) {
+                    // Now handle the variants and store them in a separate collection `4N1`
+                    variants.forEach((variant) => {
+                        const variantRef = db.collection('4N1').doc(variant.id.toString());  // Create a new document for each variant
+                        
+                        // Store variant information
+                        batch.set(variantRef, {
+                            product_id: product.id,  // Link to the parent product
+                            variant_id: variant.id,
+                            title: variant.title,
+                            price: variant.price,
+                            sku: variant.sku,
+                            inventory_quantity: variant.inventory_quantity,
+                            weight: variant.weight,
+                            weight_unit: variant.weight_unit,
+                            barcode: variant.barcode || '', // Null safe
+                            compare_at_price: variant.compare_at_price,
+                            created_at: variant.created_at,
+                            updated_at: variant.updated_at,
+                            image_id: variant.image_id || '', // Null safe
+                            admin_graphql_api_id: variant.admin_graphql_api_id,
+                        });
+                    });
+                } else {
+                    console.log(`No variants found for product: ${product.id}`);
+                }
+            } catch (variantError) {
+                console.error(`Error fetching variants for product ${product.id}: `, variantError.message);
             }
-        });
+        }
 
         // Commit the batch write for both products and variants
         await batch.commit();
