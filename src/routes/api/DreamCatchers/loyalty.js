@@ -88,6 +88,9 @@ async function updateCustomerData(customerId, customerDetails, orderInfo, points
     try {
         const userRef = db.collection('customers').doc(`DC-${customerId}`);
         const userDoc = await userRef.get();
+        // Get the total price from the order and add it as points
+        const totalSpent = parseFloat(orderInfo.totalPrice) || 0;
+        customerData.loyalty.points += totalSpent;  // Points are equal to the total price spent on the order
 
         let customerData = {
             customerId: customerId,
@@ -103,7 +106,7 @@ async function updateCustomerData(customerId, customerDetails, orderInfo, points
             addresses: customerDetails.addresses || [],
             lastOrder: orderInfo || {},
             loyalty: {
-                points: points || 0,
+                points: totalSpent || 0,
                 stamps: 0
             },
             createdAt: new Date(),
@@ -135,7 +138,6 @@ async function updateCustomerData(customerId, customerDetails, orderInfo, points
         customerData.loyalty.stamps += newStamps;  // Add stamps to the customer's loyalty points
 
 
-
         if (userDoc.exists) {
             customerData = userDoc.data() || {};
             customerData.loyalty = customerData.loyalty || { points: 0, stamps: 0 };
@@ -143,8 +145,8 @@ async function updateCustomerData(customerId, customerDetails, orderInfo, points
             customerData.totalSpent = customerData.totalSpent || 0;
             customerData.ordersCount = customerData.ordersCount || 0;
 
-            customerData.loyalty.points += points;
-            customerData.totalSpent += parseFloat(orderInfo.totalPrice);
+            customerData.loyalty.points += totalSpent;  // Points are equal to the total price spent on the order
+            customerData.totalSpent += parseFloat(totalSpent);
             customerData.ordersCount += 1;
             customerData.lastOrder = orderInfo;
             customerData.orderHistory.unshift(orderInfo);
