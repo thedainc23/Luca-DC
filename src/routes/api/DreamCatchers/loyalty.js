@@ -85,7 +85,7 @@ async function updateCustomerData(customerId, customerDetails, orderInfo) {
         const userDoc = await userRef.get();
 
         // Get the total price from the order and add it as points
-        const totalSpent = parseFloat(orderInfo.totalPrice) || 0;
+        const totalSpent = Math.floor(orderInfo.totalPrice) || 0;
 
         let customerData = {
             customerId: customerId,
