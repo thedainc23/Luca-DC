@@ -111,35 +111,20 @@ async function updateCustomerData(customerId, customerDetails, orderInfo) {
         //         totalFreeProducts += quantity;  // Add the quantity of matching products to the total
         //     }
         // }
-
+        // Iterate through each line item in the order
         for (const item of orderInfo.lineItems) {
-            const productTitle = item.productTitle || "";  // Default to empty string if title is missing
-            const quantity = item.quantity || 1;  // Default to 0 if quantity is missing
-            const price = item.price || 0;  // Default to 0 if price is missing
-        
-            // Log the raw product title to check its value
-            console.log(`Checking raw product title: '${productTitle}'`);
-        
-            // Trim any whitespace from product title before checking
-            const trimmedProductTitle = productTitle.trim();
-        
-            // Log the trimmed product title to verify no extra spaces
-            console.log(`Checking trimmed product title: '${trimmedProductTitle}'`);
-        
-            // // Check if productTitle contains "FREE" (case-insensitive)
-            // if (trimmedProductTitle.toUpperCase().includes("FREE")) {
-            //     console.log(`Matched FREE product: ${trimmedProductTitle} with quantity ${quantity}`);
-            //     totalFreeProducts += quantity;  // Count the quantity of "FREE" items
-            // } else {
-            //     console.log(`No match for FREE in product: ${trimmedProductTitle}`);
-            // }
+            const quantity = item.quantity || 1;  // Default to 1 if quantity is missing
+            const price = parseFloat(item.price) || 0;  // Convert price to a number (handle string prices as well)
 
-            if(price == 0 && quantity > 0){
-                console.log(`Matched FREE product: ${trimmedProductTitle} with quantity ${quantity}`);
-                totalFreeProducts += quantity;  // Count the quantity of "FREE" items
-            }
-            else{
-                console.log(`No match for FREE in product: ${trimmedProductTitle}`);
+            // Log the quantity and price to debug
+            console.log(`Checking product: Quantity = ${quantity}, Price = ${price}`);
+
+            // Check if the price is 0 (indicating a free product) and quantity is greater than 0
+            if (price === 0 && quantity > 0) {
+                console.log(`Matched FREE product with quantity ${quantity}`);
+                totalFreeProducts += quantity;  // Add quantity to totalFreeProducts count
+            } else {
+                console.log(`No match for FREE product. Price: ${price}, Quantity: ${quantity}`);
             }
         }
 
