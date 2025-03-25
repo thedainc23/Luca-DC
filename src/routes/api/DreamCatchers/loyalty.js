@@ -126,7 +126,7 @@ async function updateCustomerData(customerId, customerDetails, orderInfo) {
             console.log(`Checking trimmed product title: '${trimmedProductTitle}'`);
         
             // Check if productTitle contains "FREE" (case-insensitive)
-            if (trimmedProductTitle.toUpperCase().includes("FREE")) {
+            if (trimmedProductTitle.includes("FREE")) {
                 console.log(`Matched FREE product: ${trimmedProductTitle} with quantity ${quantity}`);
                 totalFreeProducts += quantity;  // Count the quantity of "FREE" items
             } else {
