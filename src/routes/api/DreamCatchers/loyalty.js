@@ -88,29 +88,42 @@ async function updateCustomerData(customerId, customerDetails, orderInfo) {
         //         totalFreeProducts += quantity;  // Add the quantity of matching products to the total
         //     }
         // }
+        // for (const item of orderInfo.lineItems) {
+        //     const rawTitle = item.productTitle || "";
+        //     const productTitle = rawTitle.replace(/\s+/g, ' ').trim();  // Sanitize the product title
+        //     const quantity = item.quantity || 0;
+        
+        //     // Log the sanitized title for debugging
+        //     console.log(`Sanitized product title: '${productTitle}' | Quantity: ${quantity}`);
+            
+        //     // Keywords for matching relevant free products
+        //     const requiredKeywords = ["FREE", "HAIR", "EXTENSIONS"];
+        //     const excludedKeywords = ["RETURN", "LABEL"];
+        
+        //     // Check if the product title contains "FREE" and the required keywords
+        //     const isMatch = requiredKeywords.every(keyword => productTitle.toUpperCase().includes(keyword));
+            
+        //     // Check if the title contains any excluded keywords
+        //     const isExcluded = excludedKeywords.some(keyword => productTitle.toUpperCase().includes(keyword));
+        
+        //     if (isMatch && !isExcluded) {
+        //         console.log(`Matched FREE product: ${productTitle} with quantity ${quantity}`);
+        //         totalFreeProducts += quantity;  // Add the quantity of matching products to the total
+        //     }
+        // }
+
         for (const item of orderInfo.lineItems) {
-            const rawTitle = item.productTitle || "";
-            const productTitle = rawTitle.replace(/\s+/g, ' ').trim();  // Sanitize the product title
+            const productTitle = item.productTitle || "";
             const quantity = item.quantity || 0;
-        
-            // Log the sanitized title for debugging
-            console.log(`Sanitized product title: '${productTitle}' | Quantity: ${quantity}`);
-            
-            // Keywords for matching relevant free products
-            const requiredKeywords = ["FREE", "HAIR", "EXTENSIONS"];
-            const excludedKeywords = ["RETURN", "LABEL"];
-        
-            // Check if the product title contains "FREE" and the required keywords
-            const isMatch = requiredKeywords.every(keyword => productTitle.toUpperCase().includes(keyword));
-            
-            // Check if the title contains any excluded keywords
-            const isExcluded = excludedKeywords.some(keyword => productTitle.toUpperCase().includes(keyword));
-        
-            if (isMatch && !isExcluded) {
+
+            // Check if productTitle contains "FREE"
+            if (productTitle.includes("FREE")) {
                 console.log(`Matched FREE product: ${productTitle} with quantity ${quantity}`);
-                totalFreeProducts += quantity;  // Add the quantity of matching products to the total
+                totalFreeProducts += quantity;  // Count the quantity of "FREE" items
             }
         }
+
+
 
         // Calculate stamps: 1 stamp for every 5 matching "FREE" items
         // const newStamps = Math.floor(totalFreeProducts / 5);
