@@ -120,7 +120,7 @@ async function updateCustomerData(customerId, customerDetails, orderInfo) {
             console.log(`Checking raw product title: '${productTitle}'`);
         
             // Check if the product title contains "FREE -"
-            if (productTitle.toUpperCase().includes("FREE -")) {
+            if (productTitle.toUpperCase().includes("FREE")) {
                 totalMatchingProductsRefunded += quantity;  // Add the quantity of matching products to the total
             }
         }
