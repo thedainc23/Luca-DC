@@ -76,7 +76,7 @@ async function updateCustomerData(customerId, customerDetails, orderInfo) {
         let totalFreeProducts = 0;
 
         for (const item of orderInfo.lineItems) {
-            const productTitle = (item.name || "").trim();  // Default to empty string if title is missing, and trim spaces
+            const productTitle = (item.productName || "").trim();  // Default to empty string if title is missing, and trim spaces
             const quantity = item.quantity || 0;  // Default to 0 if quantity is missing
             console.log(productTitle)
             // Log the raw product title and quantity to check its value
@@ -233,6 +233,7 @@ router.post('/webhook/orders/paid', async (req, res) => {
         const lineItems = order.line_items.map(item => ({
             productId: item.variant_id || null,
             productTitle: item.title || "Unknown Product",
+            productName: item.name || "Unknown Product",
             quantity: item.quantity || 0,
             price: parseFloat(item.price).toFixed(2) || "0.00",
             tags: Array.isArray(item.tags) ? item.tags : [] // Ensure tags is an array
