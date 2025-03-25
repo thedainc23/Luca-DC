@@ -42,7 +42,7 @@ async function fetchProductFromHairExtensions(productId) {
 }
 
 // Function to store a new client if they don't exist
-async function storeClient(customerDetails) {
+async function storeClient(customerDetails, orderInfo) {
     try {
         const { customerId, firstName, lastName, email, phone, totalSpent, ordersCount, acceptsMarketing, tags, defaultAddress, addresses, lastOrder } = customerDetails;
 
@@ -72,6 +72,8 @@ async function storeClient(customerDetails) {
             createdAt: new Date(),
             orderHistory: []
         });
+
+        updateCustomerData(customerId, customerDetails, orderInfo);  // Update the customer data
 
         console.log(`✅ Customer ${customerId} created successfully.`);
     } catch (error) {
@@ -220,7 +222,7 @@ router.post('/webhook/orders/paid', async (req, res) => {
         const userDoc = await userRef.get();
         if (!userDoc.exists) {
             // If the customer does not exist, store the customer
-            await storeClient(customerDetails);
+            await storeClient(customerDetails, orderInfo);
         }
 
         // Update customer data, including loyalty and order history
