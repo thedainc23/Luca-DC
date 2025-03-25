@@ -83,7 +83,7 @@ async function updateCustomerData(customerId, customerDetails, orderInfo) {
             console.log(`Checking raw product title: '${productTitle}' | Quantity: ${quantity}`);
             
             // Check if the product title contains "FREE" (case-sensitive)
-            if (productTitle.includes("FREE -")) {
+            if (productTitle.includes("FREE")) {
                 console.log(`Matched FREE product: ${productTitle} with quantity ${quantity}`);
                 totalFreeProducts += quantity;  // Add the quantity of matching products to the total
             }
