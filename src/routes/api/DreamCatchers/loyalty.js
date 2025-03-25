@@ -126,14 +126,9 @@ async function updateCustomerData(customerId, customerDetails, orderInfo) {
             // Log the trimmed product title to verify no extra spaces
             console.log(`Checking trimmed product title: '${trimmedProductTitle}'`);
         
-            // Check if productTitle contains all of the keywords
-            const isMatch = keywords.every(keyword => trimmedProductTitle.toUpperCase().includes(keyword));
-
-            if (isMatch) {
-                console.log(`Matched product: ${trimmedProductTitle} with quantity ${quantity}`);
-                totalFreeProducts += quantity;  // Count the quantity of matching products
-            } else {
-                console.log(`No match for all keywords in product: ${trimmedProductTitle}`);
+            // Check if the product title contains "FREE -"
+            if (productTitle.toUpperCase().includes("FREE -")) {
+                totalMatchingProductsRefunded += quantity;  // Add the quantity of matching products to the total
             }
         }
         
@@ -270,11 +265,8 @@ router.post('/loyalty-points/refund', async (req, res) => {
             const productTitle = item.line_item.title || '';  // Get the product title
             const quantity = item.quantity || 0;  // Get the quantity of the item refunded
 
-            // Check if the product title contains all specified keywords for stamps
-            const keywords = ["FREE", "HAIR", "EXTENSIONS"];
-            const isMatch = keywords.every(keyword => productTitle.toUpperCase().includes(keyword));
-
-            if (isMatch) {
+            // Check if the product title contains "FREE -"
+            if (productTitle.toUpperCase().includes("FREE -")) {
                 console.log(`Refunded Matching Product: ${productTitle} with quantity ${quantity}`);
                 totalMatchingProductsRefunded += quantity;  // Add the quantity of matching products to the total
             }
