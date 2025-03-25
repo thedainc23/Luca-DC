@@ -79,13 +79,13 @@ async function storeClient(customerDetails) {
 }
 
 // Function to update or create customer data, loyalty, and order history
-async function updateCustomerData(customerId, customerDetails, orderInfo, points) {
+async function updateCustomerData(customerId, customerDetails, orderInfo) {
     try {
         const userRef = db.collection('customers').doc(`DC-${customerId}`);
         const userDoc = await userRef.get();
+
         // Get the total price from the order and add it as points
         const totalSpent = parseFloat(orderInfo.totalPrice) || 0;
-        customerData.loyalty.points += totalSpent;  // Points are equal to the total price spent on the order
 
         let customerData = {
             customerId: customerId,
@@ -101,38 +101,33 @@ async function updateCustomerData(customerId, customerDetails, orderInfo, points
             addresses: customerDetails.addresses || [],
             lastOrder: orderInfo || {},
             loyalty: {
-                points: totalSpent || 0,
+                points: totalSpent || 0,  // Points from totalPrice of the order
                 stamps: 0
             },
             createdAt: new Date(),
             orderHistory: []
         };
 
-           // Initialize total matching products count
-           let totalMatchingProducts = 0;
+        // Initialize total matching products count for "FREE" products
+        let totalFreeProducts = 0;
 
-           // Iterate through the line items and match products
-           for (const item of lineItems) {
-               const productId = item.product_id;
-               const quantity = item.quantity;
-   
-               if (!productId) continue;  // Skip if no product ID
-   
-               // Fetch the product from the hair_extensions collection
-               const product = await fetchProductFromHairExtensions(productId);
-   
-               // If product is found in hair_extensions, count the quantity for stamps
-               if (product) {
-                   console.log(`Matched Product ID: ${productId} with quantity ${quantity}`);
-                   totalMatchingProducts += quantity;
-               }
-           }
+        // Iterate through the line items and match products that include "FREE" in the title
+        for (const item of orderInfo.lineItems) {
+            const productTitle = item.productTitle || "";
+            const quantity = item.quantity || 0;
 
-        // Calculate stamps: 1 stamp for every 5 matching items
-        const newStamps = Math.floor(totalMatchingProducts / 5);
+            // Check if productTitle contains "FREE"
+            if (productTitle.toUpperCase().includes("FREE")) {
+                console.log(`Matched FREE product: ${productTitle} with quantity ${quantity}`);
+                totalFreeProducts += quantity;  // Count the quantity of "FREE" items
+            }
+        }
+
+        // Calculate stamps: 1 stamp for every 5 matching "FREE" items
+        const newStamps = Math.floor(totalFreeProducts / 5);
         customerData.loyalty.stamps += newStamps;  // Add stamps to the customer's loyalty points
 
-
+        // If the customer document exists, update the data
         if (userDoc.exists) {
             customerData = userDoc.data() || {};
             customerData.loyalty = customerData.loyalty || { points: 0, stamps: 0 };
@@ -140,18 +135,23 @@ async function updateCustomerData(customerId, customerDetails, orderInfo, points
             customerData.totalSpent = customerData.totalSpent || 0;
             customerData.ordersCount = customerData.ordersCount || 0;
 
-            customerData.loyalty.points += totalSpent;  // Points are equal to the total price spent on the order
-            customerData.totalSpent += parseFloat(totalSpent);
+            // Update the loyalty points based on the totalSpent (points = total price)
+            customerData.loyalty.points += totalSpent;  
+            customerData.totalSpent += totalSpent;  // Add total price to the customer's total spent
             customerData.ordersCount += 1;
             customerData.lastOrder = orderInfo;
             customerData.orderHistory.unshift(orderInfo);
 
+            // Limit the order history to the most recent 10 orders
             if (customerData.orderHistory.length > 10) {
                 customerData.orderHistory.pop();
             }
         }
 
+        // Clean up order history, ensuring valid orderId
         customerData.orderHistory = customerData.orderHistory.filter(order => order.orderId !== undefined);
+
+        // Update Firestore with the new or updated customer data
         await userRef.set(customerData, { merge: true });
 
         console.log(`✅ Customer ${customerId} data updated successfully.`);
@@ -160,7 +160,7 @@ async function updateCustomerData(customerId, customerDetails, orderInfo, points
     }
 }
 
-// Webhook to handle Shopify order payment notifications// Webhook to handle Shopify order payment notifications
+// Webhook to handle Shopify order payment notifications
 router.post('/webhook/orders/paid', async (req, res) => {
     try {
         const order = req.body;
@@ -220,11 +220,8 @@ router.post('/webhook/orders/paid', async (req, res) => {
             await storeClient(customerDetails);
         }
 
-        // Calculate loyalty points
-        const loyaltyPoints = Math.floor(orderTotal);
-
         // Update customer data, including loyalty and order history
-        await updateCustomerData(customerId, customerDetails, orderInfo, loyaltyPoints);
+        await updateCustomerData(customerId, customerDetails, orderInfo);
 
         res.status(200).send("✅ Order processed successfully.");
     } catch (error) {
