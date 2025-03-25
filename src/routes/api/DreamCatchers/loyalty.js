@@ -122,10 +122,11 @@ async function updateCustomerData(customerId, customerDetails, orderInfo) {
                 totalFreeProducts += quantity;  // Count the quantity of "FREE" items
             }
         }
+        
 
         // Calculate stamps: 1 stamp for every 5 matching "FREE" items
-        const newStamps = Math.floor(totalFreeProducts / 5);
-        customerData.loyalty.stamps += newStamps;  // Add stamps to the customer's loyalty points
+        // const newStamps = Math.floor(totalFreeProducts / 5);
+        customerData.loyalty.stamps += totalFreeProducts;  // Add stamps to the customer's loyalty points
 
         // If the customer document exists, update the data
         if (userDoc.exists) {
