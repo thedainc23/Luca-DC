@@ -12,6 +12,8 @@ router.post('/webhook/orders/paid', async (req, res) => {
         const tags = order.tags || [];
         let newTags = [...tags];
 
+        console.log("🚀 Received order webhook:", order);
+
         // Validate required fields
         if (!order || !order.customer || !order.customer.id || !order.id || !order.total_price || !order.line_items) {
             console.error("❌ Invalid order or missing customer data:", {
