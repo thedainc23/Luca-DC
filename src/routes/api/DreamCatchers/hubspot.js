@@ -10,7 +10,7 @@ router.post('/webhook/orders/paid', async (req, res) => {
     try {
         const order = req.body;
         const tags = order.tags || [];
-        let newTags = [...tags];
+        let newTags = tags;
 
         console.log("🚀 Received order webhook:", order);
 
@@ -76,8 +76,8 @@ router.post('/webhook/orders/paid', async (req, res) => {
                 const year = parts[6]; // "2025"
 
                 // Step 3: Combine all into the desired format
-                const newTag = `${location}-${month}-${dayRange}-${year}`;
-                newTags.push(newTag);
+                let newTag = `${location}-${month}-${dayRange}-${year}`;
+                newTags = newTag;
             }
         }
 
@@ -96,7 +96,7 @@ router.post('/webhook/orders/paid', async (req, res) => {
             }
         });
 
-        const data = await response.json();
+        const data = response.data;
 
         if (response.ok) {
             console.log('Order tags updated successfully:', data);
