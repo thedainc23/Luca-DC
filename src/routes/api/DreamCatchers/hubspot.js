@@ -128,3 +128,5 @@ router.post('/webhook/orders/paid', async (req, res) => {
         res.status(500).send("Internal server error.");
     }
 });
+
+module.exports = router;
