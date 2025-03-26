@@ -76,62 +76,20 @@ async function updateCustomerData(customerId, customerDetails, orderInfo) {
         let totalFreeProducts = 0;
 
         for (const item of orderInfo.lineItems) {
-            const productTitle = (item.productName || "").trim();  // Default to empty string if title is missing, and trim spaces
-            const quantity = item.quantity || 0;  // Default to 0 if quantity is missing
+            const productTitle = item.productName;  // Default to empty string if title is missing, and trim spaces
+            const quantity = item.quantity || 1;  // Default to 0 if quantity is missing
             console.log(productTitle)
             // Log the raw product title and quantity to check its value
             console.log(`Checking raw product title: '${productTitle}' | Quantity: ${quantity}`);
-            
+              // Split the product title into an array of words
+            const wordsInTitle = productTitle.split(" ");  // Splitting by spaces
             // Check if the product title contains "FREE" (case-sensitive)
-            if (productTitle.includes("FREE")) {
+            if (wordsInTitle.includes("FREE")) {
                 console.log(`Matched FREE product: ${productTitle} with quantity ${quantity}`);
-                totalFreeProducts += quantity;  // Add the quantity of matching products to the total
+                totalFreeProducts += 1;  // Add the quantity of matching products to the total
             }
         }
-        // for (const item of orderInfo.lineItems) {
-        //     const rawTitle = item.productTitle || "";
-        //     const productTitle = rawTitle.replace(/\s+/g, ' ').trim();  // Sanitize the product title
-        //     const quantity = item.quantity || 0;
-        
-        //     // Log the sanitized title for debugging
-        //     console.log(`Sanitized product title: '${productTitle}' | Quantity: ${quantity}`);
-            
-        //     // Keywords for matching relevant free products
-        //     const requiredKeywords = ["FREE", "HAIR", "EXTENSIONS"];
-        //     const excludedKeywords = ["RETURN", "LABEL"];
-        
-        //     // Check if the product title contains "FREE" and the required keywords
-        //     const isMatch = requiredKeywords.every(keyword => productTitle.toUpperCase().includes(keyword));
-            
-        //     // Check if the title contains any excluded keywords
-        //     const isExcluded = excludedKeywords.some(keyword => productTitle.toUpperCase().includes(keyword));
-        
-        //     if (isMatch && !isExcluded) {
-        //         console.log(`Matched FREE product: ${productTitle} with quantity ${quantity}`);
-        //         totalFreeProducts += quantity;  // Add the quantity of matching products to the total
-        //     }
-        // }
-        // Iterate through each line item in the order
-        // for (const item of orderInfo.lineItems) {
-        //     const quantity = item.quantity || 1;  // Default to 1 if quantity is missing
-        //     const price = parseFloat(item.price) || 0;  // Convert price to a number (handle string prices as well)
 
-        //     // Log the quantity and price to debug
-        //     console.log(`Checking product: Quantity = ${quantity}, Price = ${price}`);
-
-        //     // Check if the price is 0 (indicating a free product) and quantity is greater than 0
-        //     if (price === 0 && quantity > 0) {
-        //         console.log(`Matched FREE product with quantity ${quantity}`);
-        //         totalFreeProducts += quantity;  // Add quantity to totalFreeProducts count
-        //     } else {
-        //         console.log(`No match for FREE product. Price: ${price}, Quantity: ${quantity}`);
-        //     }
-        // }
-
-
-
-        // Calculate stamps: 1 stamp for every 5 matching "FREE" items
-        // const newStamps = Math.floor(totalFreeProducts / 5);
         customerData.loyalty.stamps += totalFreeProducts;  // Add stamps to the customer's loyalty points
 
         // If the customer document exists, update the data
@@ -231,12 +189,15 @@ router.post('/webhook/orders/paid', async (req, res) => {
         const orderId = order.id;
         const orderTotal = parseFloat(order.total_price) || 0;
         const lineItems = order.line_items.map(item => ({
-            productId: item.variant_id || null,
+            productId: item.product_id || null,
+            varientID: item.variant_id || null,
             productTitle: item.title || "Unknown Product",
             productName: item.name || "Unknown Product",
             quantity: item.quantity || 0,
             price: parseFloat(item.price).toFixed(2) || "0.00",
-            tags: Array.isArray(item.tags) ? item.tags : [] // Ensure tags is an array
+            tags: Array.isArray(item.tags) ? item.tags : [], // Ensure tags is an array
+            sku: item.sku || null,
+            discountCodes: order.discount_applications || [],
         }));
 
         const orderInfo = {
