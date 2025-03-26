@@ -84,7 +84,7 @@ async function updateCustomerData(customerId, customerDetails, orderInfo) {
               // Split the product title into an array of words
             const wordsInTitle = productTitle.split(" ");  // Splitting by spaces
             // Check if the product title contains "FREE" (case-sensitive)
-            if (wordsInTitle.includes("FREE")) {
+            if (productTitle.includes("FREE - ")) {
                 console.log(`Matched FREE product: ${productTitle} with quantity ${quantity}`);
                 totalFreeProducts += 1;  // Add the quantity of matching products to the total
             }
