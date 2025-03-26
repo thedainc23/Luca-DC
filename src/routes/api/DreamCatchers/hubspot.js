@@ -87,13 +87,11 @@ router.post('/webhook/orders/paid', async (req, res) => {
             }
         });
 
-        const response = await fetch(url, {
-            method: 'PUT',
+        const response = await axios.put(url, body, {
             headers: {
-              'Content-Type': 'application/json',
-              'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN  // Access token for authentication
-            },
-            body: body
+                'Content-Type': 'application/json',
+                'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN  // Access token for authentication
+            }
         });
 
         const data = await response.json();
