@@ -323,8 +323,9 @@ router.get('/loyalty-points/:customerId', async (req, res) => {
 
         const customerData = userDoc.data();
         const loyaltyPoints = customerData.loyalty.points || 0;
+        const loyaltyStamps = customerData.loyalty.stamps || 0;
 
-        res.status(200).send({ loyaltyPoints });
+        res.status(200).send({ loyaltyPoints, loyaltyStamps });
     } catch (error) {
         console.error('Error fetching loyalty points:', error);
         res.status(500).send({ error: 'Internal server error' });
