@@ -123,19 +123,67 @@ router.post('/toggle/waive-signature', async (req, res) => {
     if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
     }
-
+    // let shopUrl = `https://${SHOPIFY_STORE}/admin/api/2023-10/customers.json`;
+    const newTag = "waive_signature";
     try {
-        const customer = req.body.customer;
-        const signature = req.body.waive_signature || false;
-        const customerId = customer.id;
-        const customerRef = db.collection('customers').doc(`DC-${customer.toString()}`);
-        const customerDoc = await customerRef.get();
+        // const customer = req.body.customer;
+        // const signature = req.body.waive_signature || false;
+        const customerId = req.body.customer.id;
+        // const customerRef = db.collection('customers').doc(`DC-${customer.toString()}`);
+        // const customerDoc = await customerRef.get();
 
-        if (customerDoc.exists) {
-            await customerRef.set({ waive_signature: waive_signature }, { merge: true });
-            return res.status(200).json({ message: 'Signature waiver updated successfully!' });
+        // if (customerDoc.exists) {
+        //     await customerRef.set({ waive_signature: waive_signature }, { merge: true });
+        //     return res.status(200).json({ message: 'Signature waiver updated successfully!' });
+        // } else {
+        //     return res.status(404).json({ message: 'Customer not found.' });
+        // }
+        // Fetch the current customer data
+        const response = await fetch(`https://${SHOPIFY_STORE}/admin/api/2023-10/customers/${customerId}.json`, {
+            method: 'GET',
+            headers: {
+                'X-Shopify-Access-Token': accessToken,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            console.error('Failed to fetch customer data');
+            return; 
+        }
+
+        const customer = await response.json();
+        const currentTags = customer.customer.tags.split(','); // Current tags are separated by commas
+
+        // Check if the new tag is already in the list
+        if (!currentTags.includes(newTag)) {
+            currentTags.push(newTag);  // Add the new tag
+        }
+        else {
+            currentTags = currentTags.filter(tag => tag !== newTag);  // Remove the tag if it already exists    
+        }
+
+        // Update the customer with the new tags
+        const updatedTags = currentTags.join(',');  // Rejoin the tags as a comma-separated string
+
+        const updateResponse = await fetch(`https://${SHOPIFY_STORE}/admin/api/2023-10/customers/${customerId}.json`, {
+            method: 'PUT',
+            headers: {
+                'X-Shopify-Access-Token': accessToken,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                customer: {
+                    id: customerId, 
+                    tags: updatedTags
+                }
+            })
+        });
+
+        if (updateResponse.ok) {
+            console.log('Customer tags updated successfully');
         } else {
-            return res.status(404).json({ message: 'Customer not found.' });
+            console.error('Failed to update customer tags');
         }
     } catch (error) {
         console.error("Error in customer fetching and storing process:", error);
