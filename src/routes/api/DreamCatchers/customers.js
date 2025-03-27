@@ -94,4 +94,53 @@ router.get('/', async (req, res) => {
     }
 });
 
+
+router.post('/check/waive-signature', async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+    try {
+        const customer = req.body.customer;
+        const customerId = customer.id;
+        const customerRef = db.collection('customers').doc(`DC-${customer.toString()}`);
+        const customerDoc = await customerRef.get();
+
+        if (customerDoc.exists) {
+            return res.status(200).json({ waive_signature: customerDoc.data().waive_signature ? customerDoc.data().waive_signature : false });
+        } else {
+            return res.status(404).json({ message: 'Customer not found.' });
+        }
+    } catch (error) {
+        console.error("Error in customer fetching and storing process:", error);
+        return res.status(500).json({ error: error.message });
+    }
+});
+
+router.post('/toggle/waive-signature', async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+    try {
+        const customer = req.body.customer;
+        const signature = req.body.waive_signature || false;
+        const customerId = customer.id;
+        const customerRef = db.collection('customers').doc(`DC-${customer.toString()}`);
+        const customerDoc = await customerRef.get();
+
+        if (customerDoc.exists) {
+            await customerRef.set({ waive_signature: waive_signature }, { merge: true });
+            return res.status(200).json({ message: 'Signature waiver updated successfully!' });
+        } else {
+            return res.status(404).json({ message: 'Customer not found.' });
+        }
+    } catch (error) {
+        console.error("Error in customer fetching and storing process:", error);
+        return res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;
