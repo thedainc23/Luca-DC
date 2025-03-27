@@ -153,7 +153,7 @@ router.post('/toggle/waive-signature', async (req, res) => {
         }
 
         const customer = await response.json();
-        const currentTags = customer.customer.tags.split(','); // Current tags are separated by commas
+        let currentTags = customer.customer.tags.split(','); // Current tags are separated by commas
 
         // Check if the new tag is already in the list
         if (!currentTags.includes(newTag)) {
