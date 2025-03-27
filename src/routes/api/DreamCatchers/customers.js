@@ -124,7 +124,7 @@ router.post('/toggle/waive-signature', async (req, res) => {
         return res.status(400).json({ errors: errors.array() });
     }
     // let shopUrl = `https://${SHOPIFY_STORE}/admin/api/2023-10/customers.json`;
-    const newTag = "waive_signature";
+    const newTag = " waive_signature";
     try {
         // const customer = req.body.customer;
         // const signature = req.body.waive_signature || false;
