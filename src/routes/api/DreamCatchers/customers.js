@@ -169,7 +169,7 @@ router.post('/toggle/waive-signature', async (req, res) => {
         const updateResponse = await fetch(`https://${SHOPIFY_STORE}/admin/api/2023-10/customers/${customerId}.json`, {
             method: 'PUT',
             headers: {
-                'X-Shopify-Access-Token': accessToken,
+                'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
