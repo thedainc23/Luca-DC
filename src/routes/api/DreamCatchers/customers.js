@@ -162,9 +162,10 @@ router.post('/toggle/waive-signature', async (req, res) => {
         else {
             currentTags = currentTags.filter(tag => tag !== newTag);  // Remove the tag if it already exists    
         }
-
+        console.log(currentTags);
         // Update the customer with the new tags
         const updatedTags = currentTags.join(',');  // Rejoin the tags as a comma-separated string
+        console.log(updatedTags);
 
         const updateResponse = await fetch(`https://${SHOPIFY_STORE}/admin/api/2023-10/customers/${customerId}.json`, {
             method: 'PUT',
