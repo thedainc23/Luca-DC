@@ -182,8 +182,10 @@ router.post('/toggle/waive-signature', async (req, res) => {
 
         if (updateResponse.ok) {
             console.log('Customer tags updated successfully');
+            res.status(200).json({ message: 'Customer tags updated successfully' });
         } else {
             console.error('Failed to update customer tags');
+            res.status(500).json({ message: 'Customer tags did not update successfully' });
         }
     } catch (error) {
         console.error("Error in customer fetching and storing process:", error);
