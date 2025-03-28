@@ -45,8 +45,8 @@ router.post('/webhook/orders/paid', async (req, res) => {
                 // Step 2: Extract the location and event date parts
                 const location = parts.slice(0, 2).join('-'); // "Dallas-TX"
                 const month = parts[3]; // "May"
-                const dayRange = parts[4] + "-" + parts[5].replace(/\D/g, ''); // "4-5" (removes 'th' or 'st' from the date)
-                const year = parts[6]; // "2025"
+                const dayRange = parts[4].replace(/\D/g, '') + "-" + parts[6].replace(/\D/g, ''); // "4-5" (removes 'th' or 'st' from the date)
+                const year = parts[7]; // "2025"
 
                 console.log("🚀 parts:", parts);
                 // Step 3: Combine all into the desired format
