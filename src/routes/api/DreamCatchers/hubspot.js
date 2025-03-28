@@ -35,21 +35,6 @@ router.post('/webhook/orders/paid', async (req, res) => {
             sku: item.sku || null,
             discountCodes: order.discount_applications || [],
         }));
-
-        const customerDetails = {
-            customerId: customerId,
-            firstName: order.customer.first_name || "Unknown",
-            lastName: order.customer.last_name || "Unknown",
-            email: order.customer.email || "",
-            phone: order.customer.phone || "",
-            totalSpent: parseFloat(order.customer.total_spent) || 0,
-            ordersCount: order.customer.orders_count || 0,
-            acceptsMarketing: order.customer.accepts_marketing || false,
-            tags: order.customer.tags || [],
-            defaultAddress: order.customer.default_address || {},
-            addresses: order.customer.addresses || [],
-            lastOrder: orderInfo
-        };
         
         const url = `https://${SHOPIFY_STORE}/admin/api/2023-01/orders/${orderId}.json`;
 
