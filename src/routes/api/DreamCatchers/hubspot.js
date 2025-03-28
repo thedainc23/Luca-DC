@@ -55,7 +55,7 @@ router.post('/webhook/orders/paid', async (req, res) => {
 
         for (const item of lineItems) {
             const productSku = item.sku;
-            if(productSku == "both-days"){
+            if(productSku.includes("both-days")){
                 const parts = item.productTitle.split(/[,\s-]+/);
                 // Step 2: Extract the location and event date parts
                 const location = parts.slice(0, 2).join('-'); // "Dallas-TX"
