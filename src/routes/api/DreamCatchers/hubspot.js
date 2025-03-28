@@ -53,7 +53,7 @@ router.post('/webhook/orders/paid', async (req, res) => {
         
         const url = `https://${SHOPIFY_STORE}/admin/api/2023-01/orders/${orderId}.json`;
 
-        for (const item of order.line_items) {
+        for (const item of lineItems) {
             const productSku = item.sku;
             if(productSku.includes("both-days")){
                 const parts = item.productTitle.split(/[,\s-]+/);
