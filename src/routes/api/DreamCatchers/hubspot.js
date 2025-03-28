@@ -9,7 +9,7 @@ const SHOPIFY_ACCESS_TOKEN = "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";  // Your 
 router.post('/webhook/orders/paid', async (req, res) => {
     try {
         const order = req.body;
-        let tags = order.tags.split(',');
+        let tags = order.tags;
 
         // console.log("🚀 Received order webhook:", order);
 
@@ -53,7 +53,7 @@ router.post('/webhook/orders/paid', async (req, res) => {
         
         const url = `https://${SHOPIFY_STORE}/admin/api/2023-01/orders/${orderId}.json`;
 
-        for (const item of lineItems) {
+        for (const item of order.line_items) {
             const productSku = item.sku;
             if(productSku.includes("both-days")){
                 const parts = item.productTitle.split(/[,\s-]+/);
@@ -65,9 +65,9 @@ router.post('/webhook/orders/paid', async (req, res) => {
 
                 // Step 3: Combine all into the desired format
                 let newTag = ` ${location}-${month}-${dayRange}-${year}`;
-                tags.push(newTag);
+                tags = newTag
 
-                const updatedTags = tags.join(',');
+                const updatedTags = tags
                 // Prepare the payload to update the tags
                 const body = JSON.stringify({
                     order: {
