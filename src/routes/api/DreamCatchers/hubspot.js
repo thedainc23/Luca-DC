@@ -9,7 +9,7 @@ const SHOPIFY_ACCESS_TOKEN = "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";  // Your 
 router.post('/webhook/orders/paid', async (req, res) => {
     try {
         const order = req.body;
-        let tags = order.tags;
+        let tags = order.tags || "";
 
         // console.log("🚀 Received order webhook:", order);
 
