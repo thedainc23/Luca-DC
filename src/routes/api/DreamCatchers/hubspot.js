@@ -47,9 +47,11 @@ router.post('/webhook/orders/paid', async (req, res) => {
                 const month = parts[3]; // "May"
                 const dayRange = parts[4] + "-" + parts[5].replace(/\D/g, ''); // "4-5" (removes 'th' or 'st' from the date)
                 const year = parts[6]; // "2025"
+
                 console.log("🚀 parts:", parts);
                 // Step 3: Combine all into the desired format
                 let newTag = ` ${location}-${month}-${dayRange}-${year}`;
+                console.log("🚀 newTag:", newTag);
                 tags = newTag
 
                 const updatedTags = tags
