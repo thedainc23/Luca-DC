@@ -248,7 +248,7 @@ router.post('/loyalty-points/refund', async (req, res) => {
     try {
         const order =  req.body.order_id;
         const url = `https://${SHOPIFY_STORE}/admin/api/2023-01/orders/${order}.json`;
-        await axios.get(`https://${SHOPIFY_STORE}/admin/api/2023-04/orders/${order}.json`, {
+        const response = await axios.get(`https://${SHOPIFY_STORE}/admin/api/2023-04/orders/${order}.json`, {
             headers: {
               'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
             },
