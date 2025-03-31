@@ -301,8 +301,6 @@ router.post('/loyalty-points/refund', async (req, res) => {
             const refunds = db.collection('refunds').doc(`DC-${req.body.order_id}`);
             await refunds.set(req.body);
         }
-
-        console.log(`✅ Deducted ${pointsToDeduct} points and ${stampsToDeduct} stamps from customer ${user_id}`);
         res.status(200).send("✅ Refund processed, points and stamps deducted.");
     } catch (error) {
         console.error("❌ Error processing refund:", error);
