@@ -77,7 +77,7 @@ async function updateCustomerData(customerId, customerDetails, orderInfo) {
 
         for (const item of orderInfo.lineItems) {
             const productTitle = item.productName;  // Default to empty string if title is missing, and trim spaces
-            const quantity = item.quantity || 1;  // Default to 0 if quantity is missing
+            const quantity = item.quantity || 0;  // Default to 0 if quantity is missing
             console.log(productTitle)
             // Log the raw product title and quantity to check its value
             console.log(`Checking raw product title: '${productTitle}' | Quantity: ${quantity}`);
@@ -246,58 +246,49 @@ router.post('/webhook/orders/paid', async (req, res) => {
 // Express route to get loyalty points for a customer
 router.post('/loyalty-points/refund', async (req, res) => {
     try {
-        const refundData = req.body;
-        console.log("Received Refund Data:", JSON.stringify(refundData, null, 2));
+        const customer =  req.body.customer.id;
+        const lineItems = req.body.line_items.map(item => ({
+            productId: item.product_id || null,
+            varientID: item.variant_id || null,
+            productTitle: item.title || "Unknown Product",
+            productName: item.name || "Unknown Product",
+            quantity: item.quantity || 0,
+            price: parseFloat(item.price).toFixed(2) || "0.00",
+            tags: Array.isArray(item.tags) ? item.tags : [], // Ensure tags is an array
+            sku: item.sku || null,
+            discountCodes: order.discount_applications || [],
+        }));
+        const userRef = db.collection('customers').doc(`DC-${customer}`);
+        const userDoc = await userRef.get();
+        let currentStamps = userDoc.loyalty.stamps;
 
-        // Extract necessary data from the refund payload
-        const { refund_line_items, user_id } = refundData;
-        const totalRefundAmount = refund_line_items.reduce((acc, item) => acc + parseFloat(item.subtotal), 0); // Calculate total refund amount
+         // Initialize total matching products count for "FREE" products
+         let totalFreeProducts = 0;
 
-        if (!user_id || refund_line_items.length === 0) {
-            return res.status(400).send("Invalid refund data.");
-        }
-
-        // Deduct points based on the total refund amount (1 point per 1 unit of refunded money)
-        const pointsToDeduct = Math.floor(totalRefundAmount); // Round to the nearest whole number
-
-        // Initialize the total quantity of matching refunded products
-        let totalMatchingProductsRefunded = 0;
-
-        // Loop through refund line items and check for keywords in the product title for stamps
-        for (const item of refund_line_items) {
-            const productTitle = item.line_item.title || '';  // Get the product title
-            const quantity = item.quantity || 0;  // Get the quantity of the item refunded
-
-            // Check if the product title contains "FREE -"
+         for (const item of lineItems) {
+            const productTitle = item.productName;  // Default to empty string if title is missing, and trim spaces
+            const quantity = item.quantity || 0;  // Default to 0 if quantity is missing
+            console.log(productTitle)
+            // Log the raw product title and quantity to check its value
+            console.log(`Checking raw product title: '${productTitle}' | Quantity: ${quantity}`);
+              // Split the product title into an array of words
+            const wordsInTitle = productTitle.split(" ");  // Splitting by spaces
+            // Check if the product title contains "FREE" (case-sensitive)
             if (productTitle.includes("FREE - ")) {
-                console.log(`Refunded Matching Product: ${productTitle} with quantity ${quantity}`);
-                totalMatchingProductsRefunded -= quantity;  // Add the quantity of matching products to the total
+                console.log(`Matched FREE product: ${productTitle} with quantity ${quantity}`);
+                totalFreeProducts += 1;  // Add the quantity of matching products to the total
             }
         }
 
-        // Deduct loyalty points and stamps from the customer
-        const customerRef = db.collection('customers').doc(`DC-${user_id}`);
-        const customerDoc = await customerRef.get();
-
-        if (!customerDoc.exists) {
-            return res.status(404).send("Customer not found.");
+        if(totalFreeProducts > 0){
+            currentStamps = currentStamps - totalFreeProducts;  // Add stamps to the customer's loyalty points
+        // Update Firestore with the new or updated customer data
+            await userRef.update({
+                'loyalty.stamps': currentStamps
+            });
+            const refunds = db.collection('refunds').doc(`DC-${req.body.order_id}`);
+            await refunds.set(req.body);
         }
-
-        const customerData = customerDoc.data();
-        const currentPoints = customerData.loyalty.points || 0;
-        const currentStamps = customerData.loyalty.stamps || 0;
-
-        // Deduct points: Points are equal to the total refund amount
-        const updatedPoints = Math.max(currentPoints - pointsToDeduct, 0); // Ensure points don't go below 0
-
-        const stampsToDeduct = totalMatchingProductsRefunded;
-        const updatedStamps = Math.max(currentStamps - stampsToDeduct, 0); // Ensure stamps don't go below 0
-
-        // Update the customer's loyalty data
-        customerData.loyalty.points = updatedPoints;
-        customerData.loyalty.stamps = updatedStamps;
-
-        await customerRef.set(customerData, { merge: true });
 
         console.log(`✅ Deducted ${pointsToDeduct} points and ${stampsToDeduct} stamps from customer ${user_id}`);
         res.status(200).send("✅ Refund processed, points and stamps deducted.");
