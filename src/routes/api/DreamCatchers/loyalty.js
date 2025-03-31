@@ -247,16 +247,15 @@ router.post('/webhook/orders/paid', async (req, res) => {
 router.post('/loyalty-points/refund', async (req, res) => {
     try {
         const customer =  req.body.customer.id;
-        const lineItems = req.body.line_items.map(item => ({
-            productId: item.product_id || null,
-            varientID: item.variant_id || null,
-            productTitle: item.title || "Unknown Product",
-            productName: item.name || "Unknown Product",
+        const lineItems = req.body.refunded_line_items.map(item => ({
+            productId: item.line_item.product_id || null,
+            varientID: item.line_item.variant_id || null,
+            productTitle: item.line_item.title || "Unknown Product",
+            productName: item.line_item.name || "Unknown Product",
             quantity: item.quantity || 0,
-            price: parseFloat(item.price).toFixed(2) || "0.00",
-            tags: Array.isArray(item.tags) ? item.tags : [], // Ensure tags is an array
-            sku: item.sku || null,
-            discountCodes: order.discount_applications || [],
+            price: parseFloat(item.line_item.price).toFixed(2) || "0.00",
+            tags: Array.isArray(item.line_item.tags) ? item.line_item.tags : [], // Ensure tags is an array
+            sku: item.line_item.sku || null,
         }));
         const userRef = db.collection('customers').doc(`DC-${customer}`);
         const userDoc = await userRef.get();
