@@ -261,7 +261,7 @@ router.post('/loyalty-points/refund', async (req, res) => {
             // Handle error
             console.error('Error fetching order:', error);
           });
-          const customer = response.data.customer.id;
+          const customer = response.data.order.customer.id;
         const lineItems = req.body.refunded_line_items.map(item => ({
             productId: item.line_item.product_id || null,
             varientID: item.line_item.variant_id || null,
