@@ -246,7 +246,22 @@ router.post('/webhook/orders/paid', async (req, res) => {
 // Express route to get loyalty points for a customer
 router.post('/loyalty-points/refund', async (req, res) => {
     try {
-        const customer =  req.body.customer.id;
+        const order =  req.body.customer.id;
+        const url = `https://${SHOPIFY_STORE}/admin/api/2023-01/orders/${orderId}.json`;
+        await axios.get(`https://${url}/admin/api/2023-04/orders/${order}.json`, {
+            headers: {
+              'X-Shopify-Access-Token': accessToken,
+            },
+          })
+          .then(response => {
+            // Handle the response
+            console.log(response.data);
+          })
+          .catch(error => {
+            // Handle error
+            console.error('Error fetching order:', error);
+          });
+          const customer = response.data.customer.id;
         const lineItems = req.body.refunded_line_items.map(item => ({
             productId: item.line_item.product_id || null,
             varientID: item.line_item.variant_id || null,
