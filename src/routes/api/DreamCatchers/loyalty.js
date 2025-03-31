@@ -246,8 +246,8 @@ router.post('/webhook/orders/paid', async (req, res) => {
 // Express route to get loyalty points for a customer
 router.post('/loyalty-points/refund', async (req, res) => {
     try {
-        const order =  req.body.customer.id;
-        const url = `https://${SHOPIFY_STORE}/admin/api/2023-01/orders/${orderId}.json`;
+        const order =  req.body.order_id;
+        const url = `https://${SHOPIFY_STORE}/admin/api/2023-01/orders/${order}.json`;
         await axios.get(`https://${url}/admin/api/2023-04/orders/${order}.json`, {
             headers: {
               'X-Shopify-Access-Token': accessToken,
