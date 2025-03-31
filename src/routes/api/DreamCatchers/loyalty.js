@@ -271,7 +271,8 @@ router.post('/loyalty-points/refund', async (req, res) => {
         }));
         const userRef = db.collection('customers').doc(`DC-${customer}`);
         const userDoc = await userRef.get();
-        let currentStamps = userDoc.loyalty.stamps;
+        const userData = userDoc.data();
+        let currentStamps = userData.loyalty.stamps;
 
          // Initialize total matching products count for "FREE" products
          let totalFreeProducts = 0;
