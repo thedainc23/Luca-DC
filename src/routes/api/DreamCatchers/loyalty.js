@@ -252,15 +252,12 @@ router.post('/loyalty-points/refund', async (req, res) => {
             headers: {
               'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
             },
-          })
-          .then(response => {
-            // Handle the response
-            console.log(response.data);
-          })
-          .catch(error => {
-            // Handle error
-            console.error('Error fetching order:', error);
           });
+        
+          // Handle the response
+          console.log(response.data);
+        
+          // Extract customer ID
           const customer = response.data.order.customer.id;
         const lineItems = req.body.refunded_line_items.map(item => ({
             productId: item.line_item.product_id || null,
