@@ -342,6 +342,8 @@ router.get('/', async (req, res) => {
         const snapshot = await customersRef.get();
         const customers = [];
 
+        console.log(customersRef);
+
         snapshot.forEach(doc => {
             const customerData = doc.data();
             customers.push({
@@ -349,7 +351,7 @@ router.get('/', async (req, res) => {
                 ...customerData
             });
         });
-
+        
         res.status(200).json(customersRef);
     } catch (error) {
         console.error('Error fetching customers:', error);
