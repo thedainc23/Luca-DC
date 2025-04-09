@@ -333,4 +333,28 @@ router.get('/loyalty-points/:customerId', async (req, res) => {
     }
 });
 
+
+
+// Get Customers from Firestore
+router.get('/', async (req, res) => {
+    try {
+        const customersRef = db.collection('customers');
+        const snapshot = await customersRef.get();
+        const customers = [];
+
+        snapshot.forEach(doc => {
+            const customerData = doc.data();
+            customers.push({
+                id: doc.id,
+                ...customerData
+            });
+        });
+
+        res.status(200).json(customers);
+    } catch (error) {
+        console.error('Error fetching customers:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 module.exports = router;
