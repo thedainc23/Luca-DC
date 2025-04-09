@@ -350,7 +350,7 @@ router.get('/', async (req, res) => {
             });
         });
 
-        res.status(200).json(customers);
+        res.status(200).json(customersRef);
     } catch (error) {
         console.error('Error fetching customers:', error);
         res.status(500).json({ error: 'Internal server error' });
