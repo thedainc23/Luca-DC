@@ -335,26 +335,51 @@ router.get('/loyalty-points/:customerId', async (req, res) => {
 
 
 
-// Get Customers from Firestore
-router.get('/', async (req, res) => {
-    try {
-        const customersRef = db.collection('customers');
-        const snapshot = await customersRef.get();
-        const customers = [];
 
-        console.log(customersRef);
+
+
+
+
+
+
+
+
+async function getAllCustomers(batchSize = 500) {
+    const customers = [];
+    let lastDoc = null;
+    let query = db.collection('customers').orderBy('__name__').limit(batchSize);
+
+    while (true) {
+        if (lastDoc) {
+            query = query.startAfter(lastDoc);
+        }
+
+        const snapshot = await query.get();
+        if (snapshot.empty) break;
 
         snapshot.forEach(doc => {
-            const customerData = doc.data();
             customers.push({
                 id: doc.id,
-                ...customerData
+                ...doc.data()
             });
         });
-        
-        res.status(200).json(customersRef);
-    } catch (error) {
-        console.error('Error fetching customers:', error);
+
+        lastDoc = snapshot.docs[snapshot.docs.length - 1];
+
+        // Optional: Log progress
+        console.log(`Fetched ${customers.length} customers so far...`);
+    }
+
+    return customers;
+}
+
+// Get Customers from Firestore
+router.get('/all-customers', async (req, res) => {
+    try {
+        const allCustomers = await getAllCustomers();
+        res.status(200).json(allCustomers);
+    } catch (err) {
+        console.error('Failed to fetch all customers:', err);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
