@@ -374,7 +374,7 @@ async function getAllCustomers(batchSize = 500) {
 }
 
 // Get Customers from Firestore
-router.get('/', async (req, res) => {
+router.get('/all-customers', async (req, res) => {
     try {
         const allCustomers = await getAllCustomers();
         res.status(200).json(allCustomers);
