@@ -403,4 +403,31 @@ router.get('/all-customers', async (req, res) => {
     }
 });
 
+
+router.get('/loyalty-customers', async (req, res) => {
+    try {
+        const customersRef = db.collection('customers');
+        const snapshot = await customersRef.get();
+
+        const loyaltyCustomers = [];
+
+        snapshot.forEach(doc => {
+            const data = doc.data();
+
+            // Check if `loyalty.stamps > 0`
+            if (data.loyalty && data.loyalty.stamps > 0) {
+                loyaltyCustomers.push({
+                    id: doc.id,
+                    ...data
+                });
+            }
+        });
+
+        res.status(200).json(loyaltyCustomers); // Send only loyalty customers
+    } catch (error) {
+        console.error('Error fetching loyalty customers:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 module.exports = router;
