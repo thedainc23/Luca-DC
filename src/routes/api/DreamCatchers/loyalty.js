@@ -376,10 +376,29 @@ async function getAllCustomers(batchSize = 500) {
 // Get Customers from Firestore
 router.get('/all-customers', async (req, res) => {
     try {
-        const allCustomers = await getAllCustomers();
-        res.status(200).json(allCustomers);
-    } catch (err) {
-        console.error('Failed to fetch all customers:', err);
+        const limit = parseInt(req.query.limit) || 50;
+        const last = req.query.last; // Pass the last doc's ID
+
+        let query = db.collection('customers').orderBy('createdAt').limit(limit);
+
+        if (last) {
+            const lastDoc = await db.collection('customers').doc(last).get();
+            query = query.startAfter(lastDoc);
+        }
+
+        const snapshot = await query.get();
+        const customers = [];
+
+        snapshot.forEach(doc => {
+            customers.push({
+                id: doc.id,
+                ...doc.data()
+            });
+        });
+
+        res.status(200).json(customers);
+    } catch (error) {
+        console.error('Error fetching customers:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
