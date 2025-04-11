@@ -8,11 +8,11 @@ const PORT = process.env.PORT || 8000;
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cors());
-app.use(cors({
-  origin: 'http://localhost:3000',  // Allow only your frontend origin
-  methods: ['GET', 'POST'],        // Allow necessary HTTP methods
-  allowedHeaders: ['Content-Type', 'Authorization'],  // Customize allowed headers if needed
-}));
+// app.use(cors({
+//   origin: 'http://localhost:3000',  // Allow only your frontend origin
+//   methods: ['GET', 'POST'],        // Allow necessary HTTP methods
+//   allowedHeaders: ['Content-Type', 'Authorization'],  // Customize allowed headers if needed
+// }));
 
 // DC
 app.use('/api/dc/', require('./routes/api/DreamCatchers/'));
