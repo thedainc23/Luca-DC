@@ -173,7 +173,7 @@ async function storeClient(customerDetails, orderInfo) {
 router.post('/webhook/orders/paid', async (req, res) => {
     try {
         const order = req.body;
-        console.log("Received Order Data:", JSON.stringify(order, null, 2));
+        // console.log("Received Order Data:", JSON.stringify(order, null, 2));
 
         // Validate required fields
         if (!order || !order.customer || !order.customer.id || !order.id || !order.total_price || !order.line_items) {
