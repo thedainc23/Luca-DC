@@ -3,44 +3,9 @@ const db = require('../../../config/db'); // Firestore database connection
 const router = express.Router();
 const axios = require('axios');  // Assuming you're using axios for HTTP requests
 
+// Shopify Store and Access Token
 const SHOPIFY_STORE = "www.dreamcatchers.com";
 const SHOPIFY_ACCESS_TOKEN = "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";  // Your token
-
-// Function to fetch variants from Firestore's 4N1 collection by variant_id
-async function fetchVariantFrom4N1(variantId) {
-    const variantRef = db.collection('4N1').doc(variantId.toString());
-    const variantDoc = await variantRef.get();
-    
-    if (variantDoc.exists) {
-        return variantDoc.data();  // Return the variant data if found
-    } else {
-        return null; // Return null if the variant is not found
-    }
-}
-// Function to fetch product from Firestore's hair_extensions collection by productId
-async function fetchProductFromHairExtensions(productId) {
-    if (!productId) {
-        console.error('❌ Invalid productId: ', productId);
-        return null;  // Return null if the productId is invalid or missing
-    }
-
-    try {
-        const productRef = db.collection('hair_extensions').doc(productId.toString());
-        const productDoc = await productRef.get();
-
-        if (productDoc.exists) {
-            console.log(`✅ Product found: ${productId}`);
-            return productDoc.data();  // Return the product data if found
-        } else {
-            console.warn(`⚠️ Product not found: ${productId}`);
-            return null;  // Return null if the product does not exist
-        }
-    } catch (error) {
-        console.error(`❌ Error fetching product ${productId}: `, error);
-        return null;  // Return null in case of any error during the Firestore fetch
-    }
-}
-
 
 // Function to update or create customer data, loyalty, and order history
 async function updateCustomerData(customerId, customerDetails, orderInfo) {

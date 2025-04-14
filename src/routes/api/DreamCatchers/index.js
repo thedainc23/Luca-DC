@@ -195,7 +195,7 @@ router.post('/sync-shopify', async (req, res) => {
 
 
 // API to store customer data if it doesn't exist
-router.post('/storeClient', async (req, res) => {
+router.post('/', async (req, res) => {
     try {
         const {
             customerId, firstName, lastName, email, phone, totalSpent, ordersCount,
