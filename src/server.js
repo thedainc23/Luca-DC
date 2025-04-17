@@ -16,11 +16,16 @@ app.use(cors());
 
 // DC
 app.use('/api/dc/', require('./routes/api/DreamCatchers/'));
+app.use('/api/dc/data/', require('./routes/api/DreamCatchers/data'));
 app.use('/api/dc/orders', require('./routes/api/DreamCatchers/orders'));
 app.use('/api/dc/customers', require('./routes/api/DreamCatchers/customers'));
 app.use('/api/dc/loyalty', require('./routes/api/DreamCatchers/loyalty'));
 app.use('/api/dc/hubspot', require('./routes/api/DreamCatchers/hubspot'));
+app.use('/api/dc/peach', require('./routes/api/DreamCatchers/peach'));
 
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });
+
+
+// Finish route setup for peach
