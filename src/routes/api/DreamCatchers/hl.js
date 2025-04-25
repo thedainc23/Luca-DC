@@ -66,7 +66,7 @@ router.post('/', async (req, res) => {
         });
         if (updateResponse.ok) {
             console.log('Customer tags updated successfully');
-            res.status(200).json({ message: 'Customer tags updated successfully' });
+            res.status(200).json({ message: 'Customer (Veried -> wholesale) tags updated successfully' });
         } else {
             console.error('Failed to update customer tags');
             res.status(500).json({ message: 'Customer tags did not update successfully' });
