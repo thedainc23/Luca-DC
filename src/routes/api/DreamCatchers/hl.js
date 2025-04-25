@@ -12,7 +12,7 @@ router.post('/', async (req, res) => {
     try {
         const order = req.body;
         const customerId = order.customer.id;
-        const wholesaleTag = " wholesale";
+        const wholesaleTag = "wholesale";
         const newTag = " new";
         const verifiedTag = "verified";
 
