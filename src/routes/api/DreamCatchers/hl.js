@@ -33,7 +33,7 @@ router.post('/', async (req, res) => {
         // Check if the new tag is already in the list
         if (!currentTags.includes(newTag) || !currentTags.includes(verifiedTag) || !currentTags.includes(wholesaleTag)) {
             // currentTags.push(wholesaleTag);  // Add the new tag
-            res.status(200).json({ message: 'No Tags Detected' });
+            return res.status(200).json({ message: 'No Tags Detected' });
         }
         else if (currentTags.includes(verifiedTag)) {
             if(currentTags.includes(verifiedTag)){
@@ -66,10 +66,10 @@ router.post('/', async (req, res) => {
         });
         if (updateResponse.ok) {
             console.log('Customer tags updated successfully');
-            res.status(200).json({ message: 'Customer (Veried -> wholesale) tags updated successfully' });
+            return res.status(200).json({ message: 'Customer (Veried -> wholesale) tags updated successfully' });
         } else {
             console.error('Failed to update customer tags');
-            res.status(500).json({ message: 'Customer tags did not update successfully' });
+            return res.status(500).json({ message: 'Customer tags did not update successfully' });
         }
     } catch (error) {
         // console.error('Error fetching loyalty customers:', error);
