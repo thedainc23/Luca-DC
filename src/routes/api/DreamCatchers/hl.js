@@ -14,7 +14,7 @@ router.post('/', async (req, res) => {
         const customerId = order.customer.id;
         const wholesaleTag = " wholesale";
         const newTag = " new";
-        const verifiedTag = " verified";
+        const verifiedTag = "verified";
 
         const response = await fetch(`https://${SHOPIFY_STORE}/admin/api/2023-10/customers/${customerId}.json`, {
             method: 'GET',
@@ -31,17 +31,13 @@ router.post('/', async (req, res) => {
         const customer = await response.json();
         let currentTags = customer.customer.tags.split(','); // Current tags are separated by commas
         // Check if the new tag is already in the list
-        if (!currentTags.includes(newTag) || !currentTags.includes(verifiedTag) || !currentTags.includes(wholesaleTag)) {
-            // currentTags.push(wholesaleTag);  // Add the new tag
-            return res.status(200).json({ message: 'No Tags Detected' });
-        }
-        else if (currentTags.includes(verifiedTag)) {
+        // if (!currentTags.includes(newTag) || !currentTags.includes(verifiedTag) || !currentTags.includes(wholesaleTag)) {
+        //     // currentTags.push(wholesaleTag);  // Add the new tag
+        //     return res.status(200).json({ message: 'No Tags Detected' });
+        // }
+        if (currentTags.includes('verified')) {
             if(currentTags.includes(verifiedTag)){
                 currentTags = currentTags.filter(tag => tag !== verifiedTag);  // Remove the tag if it already exists    
-            }
-            // Removes the new tag if it already exists so we can re add it
-            else if(currentTags.includes(wholesaleTag)){
-                currentTags = currentTags.filter(tag => tag !== wholesaleTag);  // Remove the tag if it already exists    
             }
             // Add the wholesale tag
             currentTags.push(wholesaleTag);  // Add the new tag
