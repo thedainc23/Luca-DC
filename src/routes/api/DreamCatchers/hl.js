@@ -35,12 +35,9 @@ router.post('/', async (req, res) => {
             // currentTags.push(wholesaleTag);  // Add the new tag
             res.status(200).json({ message: 'No Tags Detected' });
         }
-        else if (currentTags.includes(verifiedTag) || currentTags.includes(newTag)) {
+        else if (currentTags.includes(verifiedTag)) {
             if(currentTags.includes(verifiedTag)){
                 currentTags = currentTags.filter(tag => tag !== verifiedTag);  // Remove the tag if it already exists    
-            }
-            else if(currentTags.includes(newTag)){
-                currentTags = currentTags.filter(tag => tag !== newTag);  // Remove the tag if it already exists    
             }
             // Removes the new tag if it already exists so we can re add it
             else if(currentTags.includes(wholesaleTag)){
