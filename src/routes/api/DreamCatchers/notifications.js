@@ -17,14 +17,28 @@ router.post('/', async (req, res) => {
         const currentData = docSnapshot.data();
         const updatedWaitingList = currentData.waitingList || [];
   
-        updatedWaitingList.push({
+       // Find if the customer already exists in the waitingList
+        const existingCustomerIndex = updatedWaitingList.findIndex(
+            (customer) => customer.customer_id === data.customer_id
+        );
+        
+        const customerData = {
             customer_id: data.customer_id || '',
             email: data.email || '',
             first_name: data.first_name || '',
             last_name: data.last_name || '',
             phone: data.phone || '',
             customer_tags: data.customer_tags || '',
-        });
+        };
+        
+        if (existingCustomerIndex !== -1) {
+            // Customer exists → Update their info
+            updatedWaitingList[existingCustomerIndex] = customerData;
+        } else {
+            // Customer does not exist → Add new customer
+            updatedWaitingList.push(customerData);
+        }
+  
   
         await notificationsRef.update({
           waitingList: updatedWaitingList,
