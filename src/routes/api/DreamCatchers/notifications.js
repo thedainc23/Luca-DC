@@ -18,10 +18,10 @@ router.post('/', async (req, res) => {
         const updatedWaitingList = currentData.waitingList || [];
   
         updatedWaitingList.push({
-          customer_id: data.customer_id,
-          email: data.email,
-          first_name: data.first_name,
-          phone: data.phone,
+            customer_id: data.customer_id || '',
+            email: data.email || '',
+            first_name: data.first_name || '',
+            phone: data.phone || '',
         });
   
         await notificationsRef.update({
@@ -37,10 +37,10 @@ router.post('/', async (req, res) => {
           createdAt: new Date(),
           updatedAt: new Date(),
           waitingList: [{
-            customer_id: data.customer_id,
-            email: data.email,
-            first_name: data.first_name,
-            phone: data.phone,
+            customer_id: data.customer_id || '',
+            email: data.email || '',
+            first_name: data.first_name || '',
+            phone: data.phone || '',
           }]
         });
         res.status(200).json({ message: 'Created new notification document' });
