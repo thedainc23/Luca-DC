@@ -52,6 +52,7 @@ router.post('/', async (req, res) => {
           product_title: data.product_title,
           createdAt: new Date(),
           updatedAt: new Date(),
+          color: data.color || '',
           waitingList: [{
             customer_id: data.customer_id || '',
             email: data.email || '',
