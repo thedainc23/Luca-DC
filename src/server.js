@@ -19,6 +19,7 @@ app.use('/api/dc/', require('./routes/api/DreamCatchers/'));
 app.use('/api/dc/orders', require('./routes/api/DreamCatchers/orders'));
 app.use('/api/dc/customers', require('./routes/api/DreamCatchers/customers'));
 app.use('/api/dc/loyalty', require('./routes/api/DreamCatchers/loyalty'));
+app.use('/api/dc/membership', require('./routes/api/DreamCatchers/membership'));
 app.use('/api/dc/hubspot', require('./routes/api/DreamCatchers/hubspot'));
 app.use('/api/dc/notifications', require('./routes/api/DreamCatchers/notifications'));
 app.use('/api/dc/hl', require('./routes/api/DreamCatchers/hl'));
