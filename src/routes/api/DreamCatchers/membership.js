@@ -56,10 +56,18 @@ async function updateCustomerData(customerId, customerDetails, orderInfo) {
                 count += quantity;  // Add the quantity of matching products to the total
             }
         }
-        remainder = count % 5;  // Calculate the remainder when divided by 5
-        total = Math.floor(count / 5);  // Calculate the total number of stamps (1 stamp for every 5 products)
-        customerData.loyalty.stamps += total;  // Add stamps to the customer's loyalty points
-        customerData.loyalty.count ? customerData.loyalty.count = remainder : customerData.loyalty = {points: customerData.loyalty.points, stamps: customerData.loyalty.stamps, count: remainder};  // Update the count in the loyalty object
+
+        // Correct loyalty logic
+        const previousCount = customerData.loyalty.count || 0;
+        const combinedCount = previousCount + count;
+        const newStamps = Math.floor(combinedCount / 5);
+        const newRemainder = combinedCount % 5;
+        customerData.loyalty.stamps += newStamps;
+        customerData.loyalty.count = newRemainder;
+        // remainder = count % 5;  // Calculate the remainder when divided by 5
+        // total = Math.floor(count / 5);  // Calculate the total number of stamps (1 stamp for every 5 products)
+        // customerData.loyalty.stamps += total;  // Add stamps to the customer's loyalty points
+        // customerData.loyalty.count ? customerData.loyalty.count = remainder : customerData.loyalty = {points: customerData.loyalty.points, stamps: customerData.loyalty.stamps, count: remainder};  // Update the count in the loyalty object
 
         // If the customer document exists, update the data
         if (userDoc.exists) {
@@ -71,10 +79,12 @@ async function updateCustomerData(customerId, customerDetails, orderInfo) {
 
             // Update the loyalty points based on the totalSpent (points = total price)
             customerData.loyalty.points += totalSpent;
-            let newCount = (customerData.loyalty.count + count) % 5;  // Calculate the remainder when divided by 5
-            total = Math.floor(newCount / 5);  // Calculate the total number of stamps (1 stamp for every 5 products)
-            customerData.loyalty.stamps += total;  // Add stamps to the customer's loyalty points
-            customerData.loyalty.count ? customerData.loyalty.count = newCount : customerData.loyalty = {points: customerData.loyalty.points, stamps: customerData.loyalty.stamps, count: newCount};  // Update the count in the loyalty object
+            const previousCountExisting = customerData.loyalty.count || 0;
+            const combinedCountExisting = previousCountExisting + count;
+            const newStampsExisting = Math.floor(combinedCountExisting / 5);
+            const newRemainderExisting = combinedCountExisting % 5;
+            customerData.loyalty.stamps += newStampsExisting;
+            customerData.loyalty.count = newRemainderExisting;
             customerData.totalSpent += totalSpent;  // Add total price to the customer's total spent
             customerData.ordersCount += 1;
             customerData.lastOrder = orderInfo;
