@@ -216,7 +216,7 @@ router.post('/storeClient', async (req, res) => {
             // Check for existing loyalty data
             const loyaltyRef = db.collection('loyalty').doc(`DC-${customerId}`);
             const loyaltyDoc = await loyaltyRef.get();
-            const loyaltyData = loyaltyDoc.exists ? loyaltyDoc.data().loyalty : { points: 0, stamps: 0 };
+            const loyaltyData = loyaltyDoc.exists ? loyaltyDoc.data().loyalty : { points: 0, stamps: 0 , count: 0}; // Default to 0 points and stamps if not found
 
             // Store all customer data, including loyalty info
             await userRef.set({
