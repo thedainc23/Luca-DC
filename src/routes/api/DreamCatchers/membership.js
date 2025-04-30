@@ -6,42 +6,6 @@ const axios = require('axios');  // Assuming you're using axios for HTTP request
 const SHOPIFY_STORE = "www.dreamcatchers.com";
 const SHOPIFY_ACCESS_TOKEN = "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";  // Your token
 
-// Function to fetch variants from Firestore's 4N1 collection by variant_id
-async function fetchVariantFrom4N1(variantId) {
-    const variantRef = db.collection('4N1').doc(variantId.toString());
-    const variantDoc = await variantRef.get();
-    
-    if (variantDoc.exists) {
-        return variantDoc.data();  // Return the variant data if found
-    } else {
-        return null; // Return null if the variant is not found
-    }
-}
-// Function to fetch product from Firestore's hair_extensions collection by productId
-async function fetchProductFromHairExtensions(productId) {
-    if (!productId) {
-        console.error('❌ Invalid productId: ', productId);
-        return null;  // Return null if the productId is invalid or missing
-    }
-
-    try {
-        const productRef = db.collection('hair_extensions').doc(productId.toString());
-        const productDoc = await productRef.get();
-
-        if (productDoc.exists) {
-            console.log(`✅ Product found: ${productId}`);
-            return productDoc.data();  // Return the product data if found
-        } else {
-            console.warn(`⚠️ Product not found: ${productId}`);
-            return null;  // Return null if the product does not exist
-        }
-    } catch (error) {
-        console.error(`❌ Error fetching product ${productId}: `, error);
-        return null;  // Return null in case of any error during the Firestore fetch
-    }
-}
-
-
 // Function to update or create customer data, loyalty, and order history
 async function updateCustomerData(customerId, customerDetails, orderInfo) {
     try {
@@ -66,14 +30,17 @@ async function updateCustomerData(customerId, customerDetails, orderInfo) {
             lastOrder: orderInfo || {},
             loyalty: {
                 points: totalSpent || 0,  // Points from totalPrice of the order
-                stamps: 0
+                stamps: 0,
+                count: 0,
             },
             createdAt: new Date(),
             orderHistory: []
         };
 
         // Initialize total matching products count for "FREE" products
-        let totalFreeProducts = 0;
+        let total = 0;
+        let count = 0;
+        let remainder = 0;
 
         for (const item of orderInfo.lineItems) {
             const productTitle = item.productName;  // Default to empty string if title is missing, and trim spaces
@@ -84,13 +51,15 @@ async function updateCustomerData(customerId, customerDetails, orderInfo) {
               // Split the product title into an array of words
             const wordsInTitle = productTitle.split(" ");  // Splitting by spaces
             // Check if the product title contains "FREE" (case-sensitive)
-            if (productTitle.includes("FREE - ")) {
-                console.log(`Matched FREE product: ${productTitle} with quantity ${quantity}`);
-                totalFreeProducts += 1;  // Add the quantity of matching products to the total
+            if (productTitle.includes("Hair Extensions") || productTitle.includes("20 Inch") || productTitle.includes("24 Inch")) {
+                
+                count += quantity;  // Add the quantity of matching products to the total
             }
         }
-
-        customerData.loyalty.stamps += totalFreeProducts;  // Add stamps to the customer's loyalty points
+        remainder = count % 5;  // Calculate the remainder when divided by 5
+        total = Math.floor(count / 5);  // Calculate the total number of stamps (1 stamp for every 5 products)
+        customerData.loyalty.stamps += total;  // Add stamps to the customer's loyalty points
+        customerData.loyalty.count ? customerData.loyalty.count = remainder : customerData.loyalty = {points: customerData.loyalty.points, stamps: customerData.loyalty.stamps, count: remainder};  // Update the count in the loyalty object
 
         // If the customer document exists, update the data
         if (userDoc.exists) {
@@ -102,7 +71,10 @@ async function updateCustomerData(customerId, customerDetails, orderInfo) {
 
             // Update the loyalty points based on the totalSpent (points = total price)
             customerData.loyalty.points += totalSpent;
-            customerData.loyalty.stamps += totalFreeProducts;  
+            let newCount = (customerData.loyalty.count + count) % 5;  // Calculate the remainder when divided by 5
+            total = Math.floor(newCount / 5);  // Calculate the total number of stamps (1 stamp for every 5 products)
+            customerData.loyalty.stamps += total;  // Add stamps to the customer's loyalty points
+            customerData.loyalty.count ? customerData.loyalty.count = newCount : customerData.loyalty = {points: customerData.loyalty.points, stamps: customerData.loyalty.stamps, count: newCount};  // Update the count in the loyalty object
             customerData.totalSpent += totalSpent;  // Add total price to the customer's total spent
             customerData.ordersCount += 1;
             customerData.lastOrder = orderInfo;
@@ -111,6 +83,9 @@ async function updateCustomerData(customerId, customerDetails, orderInfo) {
             // Limit the order history to the most recent 10 orders
             if (customerData.orderHistory.length > 10) {
                 customerData.orderHistory.pop();
+            }
+            if (customerData.loyalty.count) {
+                customerData.loyalty.count = remainder;
             }
         }
 
