@@ -94,9 +94,6 @@ async function updateCustomerData(customerId, customerDetails, orderInfo) {
             if (customerData.orderHistory.length > 10) {
                 customerData.orderHistory.pop();
             }
-            if (customerData.loyalty.count) {
-                customerData.loyalty.count = remainder;
-            }
         }
 
         // Clean up order history, ensuring valid orderId
