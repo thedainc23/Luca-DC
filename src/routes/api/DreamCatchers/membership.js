@@ -240,7 +240,7 @@ router.post('/loyalty-points/refund', async (req, res) => {
           console.log(response.data);
         
           // Extract customer ID
-          const customer = response.data.order.customer.id;
+        const customer = response.data.order.customer.id;
         const lineItems = req.body.refund_line_items.map(item => ({
             productId: item.line_item.product_id || null,
             varientID: item.line_item.variant_id || null,
@@ -256,7 +256,7 @@ router.post('/loyalty-points/refund', async (req, res) => {
         const userData = userDoc.data();
         let currentStamps = userData.loyalty.stamps;
 
-         // Initialize total matching products count for "FREE" products
+         
          let totalFreeProducts = 0;
 
          for (const item of lineItems) {
@@ -270,7 +270,7 @@ router.post('/loyalty-points/refund', async (req, res) => {
             // Check if the product title contains "FREE" (case-sensitive)
             if (productTitle.includes("FREE - ")) {
                 console.log(`Matched FREE product: ${productTitle} with quantity ${quantity}`);
-                totalFreeProducts += 1;  // Add the quantity of matching products to the total
+                totalFreeProducts += quantity;  // Add the quantity of matching products to the total
             }
         }
 
