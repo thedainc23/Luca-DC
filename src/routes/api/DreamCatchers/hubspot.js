@@ -5,6 +5,57 @@ const axios = require('axios');  // Assuming you're using axios for HTTP request
 const SHOPIFY_STORE = "www.dreamcatchers.com";
 const SHOPIFY_ACCESS_TOKEN = "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";  // Your token
 
+const HUBSPOT_TOKEN = 'pat-na1-e5f8e2e6-07e7-47aa-b1be-fda63286ed7b'; // Use a Private App token
+const hubheaders = {
+    Authorization: `Bearer ${HUBSPOT_TOKEN}`,
+    'Content-Type': 'application/json'
+  };
+
+const COURSE_OBJECT_TYPE = 'courses'; // or your actual objectTypeId
+
+
+
+
+async function upsertCourseAndAssociateCustomer(courseId, customerId, courseData) {
+    // 1. Search for course
+    const searchUrl = `https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}/search`;
+    const searchBody = {
+      filterGroups: [{
+        filters: [{
+          propertyName: 'course_id', // Use the correct property name here
+          operator: 'EQ',
+          value: courseId
+        }]
+      }],
+      properties: ['course_id']
+    };
+  
+    const searchResp = await axios.post(searchUrl, searchBody, { hubheaders });
+    let courseObjectId;
+  
+    if (searchResp.data.results.length > 0) {
+      courseObjectId = searchResp.data.results[0].id;
+    } else {
+      // 2. Create course if not found
+      const createUrl = `https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}`;
+      const createResp = await axios.post(createUrl, {
+        properties: {
+          ...courseData,
+          course_id: courseId
+        }
+      }, { headers });
+      courseObjectId = createResp.data.id;
+    }
+  
+    // 3. Associate customer (contact) to course
+    const associateUrl = `https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}/${courseObjectId}/associations/contact/${customerId}/course_to_contact`; // replace association label if needed
+    await axios.put(associateUrl, {}, { headers });
+  }
+
+
+
+
+
 
 router.post('/webhook/orders/paid', async (req, res) => {
     try {
@@ -78,7 +129,7 @@ router.post('/webhook/orders/paid', async (req, res) => {
                 } else {
                     console.error('Error updating order tags:', data);
                 }
-
+                upsertCourseAndAssociateCustomer(newTag, order.customer.id, order.customer);
                 const userRef = db.collection('hubspot-classes').doc(`DC-${orderId}`);
                 const userDoc = await userRef.get();
                 if (!userDoc.exists) {
