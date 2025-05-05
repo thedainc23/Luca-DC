@@ -30,7 +30,7 @@ async function upsertCourseAndAssociateCustomer(courseId, customerId, courseData
       properties: ['course_id']
     };
   
-    const searchResp = await axios.post(searchUrl, searchBody, { hubheaders });
+    const searchResp = await axios.post(searchUrl, searchBody, { headers: hubheaders });
     let courseObjectId;
   
     if (searchResp.data.results.length > 0) {
