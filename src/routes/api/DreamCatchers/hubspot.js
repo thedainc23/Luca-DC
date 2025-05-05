@@ -49,7 +49,7 @@ async function upsertCourseAndAssociateCustomer(courseId, customerId, courseData
   
     // 3. Associate customer (contact) to course
     const associateUrl = `https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}/${courseObjectId}/associations/contact/${customerId}/course_to_contact`; // replace association label if needed
-    await axios.put(associateUrl, {}, { headers });
+    await axios.put(associateUrl, {}, { headers: hubheaders });
   }
 
 
