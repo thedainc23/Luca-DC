@@ -79,7 +79,7 @@ async function upsertCourseAndAssociateCustomer(courseId, shopifyCustomer, cours
   }
 
   // 3. Associate contact to course
-  const associateUrl = `https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}/${courseObjectId}/associations/contact/${contactId}/course_to_contact`;
+  const associateUrl = `https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}/${courseObjectId}/associations/company/${companyId}/courses_to_companies`;
   await axios.put(associateUrl, {}, { headers: hubheaders });
 }
 
