@@ -100,8 +100,10 @@ async function getAssociationTypeId(fromType, toType, labelContains) {
     if (searchResp.data.results.length > 0) {
       courseObjectId = searchResp.data.results[0].id;
     } else {
+        console.log("🔍 Searching HubSpot for class_id:", courseId);
       const createUrl = `https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}`;
-      console.log("🔍 Search results:", searchResp.data.results);
+      console.log("🔍 Search results:", JSON.stringify(searchResp.data.results, null, 2));
+
 
       const createResp = await axios.post(createUrl, {
         properties: {
