@@ -11,7 +11,7 @@ const hubheaders = {
     'Content-Type': 'application/json'
   };
 
-const COURSE_OBJECT_TYPE = 'courses'; // or your actual objectTypeId
+const COURSE_OBJECT_TYPE = '0-410'; // or your actual objectTypeId
 
 
 
