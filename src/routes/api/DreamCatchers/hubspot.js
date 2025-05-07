@@ -15,73 +15,112 @@ const hubheaders = {
 const COURSE_OBJECT_TYPE = '0-410'; // Your HubSpot custom object type ID
 
 async function upsertCourseAndAssociateCustomer(courseId, shopifyCustomer, courseData) {
-  const contactSearchUrl = 'https://api.hubapi.com/crm/v3/objects/contacts/search';
-  const email = shopifyCustomer.email;
-  let contactId;
-
-  // 1. Search or create contact
-  const searchBody = {
-    filterGroups: [{
-      filters: [{
-        propertyName: 'email',
-        operator: 'EQ',
-        value: email
-      }]
-    }],
-    properties: ['email']
-  };
-
-  const contactSearchResp = await axios.post(contactSearchUrl, searchBody, { headers: hubheaders });
-  if (contactSearchResp.data.results.length > 0) {
-    contactId = contactSearchResp.data.results[0].id;
-  } else {
-    const contactCreateResp = await axios.post(
-      'https://api.hubapi.com/crm/v3/objects/contacts',
-      {
-        properties: {
-          email,
-          firstname: shopifyCustomer.first_name || '',
-          lastname: shopifyCustomer.last_name || ''
-        }
-      },
-      { headers: hubheaders }
-    );
-    contactId = contactCreateResp.data.id;
-  }
-
-  // 2. Search or create course object
-  const searchUrl = `https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}/search`;
-  const courseSearchBody = {
-    filterGroups: [{
-      filters: [{
-        propertyName: 'course_id',
-        operator: 'EQ',
-        value: courseId
-      }]
-    }],
-    properties: ['course_id']
-  };
-
-  const searchResp = await axios.post(searchUrl, courseSearchBody, { headers: hubheaders });
-  let courseObjectId;
-
-  if (searchResp.data.results.length > 0) {
-    courseObjectId = searchResp.data.results[0].id;
-  } else {
-    const createUrl = `https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}`;
-    const createResp = await axios.post(createUrl, {
-      properties: {
-        course_id: courseId,
-        name: courseId // Example property, adjust as needed
+    const contactSearchUrl = 'https://api.hubapi.com/crm/v3/objects/contacts/search';
+    const email = shopifyCustomer.email;
+    let contactId, companyId;
+  
+    // 1. Search or create contact
+    const searchBody = {
+      filterGroups: [{
+        filters: [{
+          propertyName: 'email',
+          operator: 'EQ',
+          value: email
+        }]
+      }],
+      properties: ['email']
+    };
+  
+    const contactSearchResp = await axios.post(contactSearchUrl, searchBody, { headers: hubheaders });
+    if (contactSearchResp.data.results.length > 0) {
+      contactId = contactSearchResp.data.results[0].id;
+    } else {
+      const contactCreateResp = await axios.post(
+        'https://api.hubapi.com/crm/v3/objects/contacts',
+        {
+          properties: {
+            email,
+            firstname: shopifyCustomer.first_name || '',
+            lastname: shopifyCustomer.last_name || ''
+          }
+        },
+        { headers: hubheaders }
+      );
+      contactId = contactCreateResp.data.id;
+    }
+  
+    // 2. Search for associated company via email domain
+    const domain = email?.split('@')[1];
+    if (domain) {
+      const companySearchResp = await axios.post(
+        'https://api.hubapi.com/crm/v3/objects/companies/search',
+        {
+          filterGroups: [{
+            filters: [{
+              propertyName: 'domain',
+              operator: 'EQ',
+              value: domain
+            }]
+          }],
+          properties: ['name', 'domain']
+        },
+        { headers: hubheaders }
+      );
+  
+      if (companySearchResp.data.results.length > 0) {
+        companyId = companySearchResp.data.results[0].id;
       }
-    }, { headers: hubheaders });
-    courseObjectId = createResp.data.id;
+    }
+  
+    // 3. Search or create course object
+    const searchUrl = `https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}/search`;
+    const courseSearchBody = {
+      filterGroups: [{
+        filters: [{
+          propertyName: 'course_id',
+          operator: 'EQ',
+          value: courseId
+        }]
+      }],
+      properties: ['course_id']
+    };
+  
+    const searchResp = await axios.post(searchUrl, courseSearchBody, { headers: hubheaders });
+    let courseObjectId;
+  
+    if (searchResp.data.results.length > 0) {
+      courseObjectId = searchResp.data.results[0].id;
+    } else {
+      const createUrl = `https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}`;
+      const createResp = await axios.post(createUrl, {
+        properties: {
+          course_id: courseId,
+          name: courseId
+        }
+      }, { headers: hubheaders });
+      courseObjectId = createResp.data.id;
+    }
+  
+    // 4. Associate contact to course
+    const contactAssociateUrl = `https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}/${courseObjectId}/associations/contact/${contactId}/course_to_contact`;
+    await axios.put(contactAssociateUrl, {}, { headers: hubheaders });
+  
+    // 5. Associate company to course (if found)
+    if (companyId) {
+      const companyAssociateUrl = `https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}/${courseObjectId}/associations/company/${companyId}/courses_to_companies`;
+      try {
+        const associateResp = await axios.put(companyAssociateUrl, {}, { headers: hubheaders });
+        console.log("✅ Associated course with company:", associateResp.data);
+      } catch (err) {
+        console.error("❌ Failed to associate company:", {
+          message: err?.response?.data?.message,
+          status: err?.response?.status,
+          data: err?.response?.data
+        });
+      }
+    }
   }
-
-  // 3. Associate contact to course
-  const associateUrl = `https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}/${courseObjectId}/associations/company/${companyId}/courses_to_companies`;
-  await axios.put(associateUrl, {}, { headers: hubheaders });
-}
+  
 
 router.post('/webhook/orders/paid', async (req, res) => {
   try {
