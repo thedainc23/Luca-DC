@@ -101,6 +101,8 @@ async function getAssociationTypeId(fromType, toType, labelContains) {
       courseObjectId = searchResp.data.results[0].id;
     } else {
       const createUrl = `https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}`;
+      console.log("🔍 Search results:", searchResp.data.results);
+
       const createResp = await axios.post(createUrl, {
         properties: {
           class_id: courseId, // changed from course_id
