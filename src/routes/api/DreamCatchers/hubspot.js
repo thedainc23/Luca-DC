@@ -15,12 +15,22 @@ const hubheaders = {
 
 const COURSE_OBJECT_TYPE = '0-410'; // Your HubSpot custom object type ID
 
-async function upsertCourseAndAssociateCustomer(courseId, shopifyCustomer, courseData) {
+async function getAssociationTypeId(fromType, toType, labelContains) {
+    const url = `https://api.hubapi.com/crm/v4/associations/schema/${fromType}/${toType}`;
+    const resp = await axios.get(url, { headers: hubheaders });
+  
+    const match = resp.data.results.find(a =>
+      a.label && a.label.toLowerCase().includes(labelContains.toLowerCase())
+    );
+  
+    return match ? match.associationTypeId : null;
+  }
+  
+  async function upsertCourseAndAssociateCustomer(courseId, shopifyCustomer, courseData) {
     const contactSearchUrl = 'https://api.hubapi.com/crm/v3/objects/contacts/search';
     const email = shopifyCustomer.email;
     let contactId, companyId;
   
-    // 1. Search or create contact
     const searchBody = {
       filterGroups: [{
         filters: [{
@@ -50,7 +60,6 @@ async function upsertCourseAndAssociateCustomer(courseId, shopifyCustomer, cours
       contactId = contactCreateResp.data.id;
     }
   
-    // 2. Search for associated company via email domain
     const domain = email?.split('@')[1];
     if (domain) {
       const companySearchResp = await axios.post(
@@ -73,7 +82,6 @@ async function upsertCourseAndAssociateCustomer(courseId, shopifyCustomer, cours
       }
     }
   
-    // 3. Search or create course object
     const searchUrl = `https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}/search`;
     const courseSearchBody = {
       filterGroups: [{
@@ -102,13 +110,21 @@ async function upsertCourseAndAssociateCustomer(courseId, shopifyCustomer, cours
       courseObjectId = createResp.data.id;
     }
   
-    // 4. Associate contact to course
-    const contactAssociateUrl = `https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}/${courseObjectId}/associations/contact/${contactId}/course_to_contact`;
+    // Fetch proper association type IDs
+    const contactAssocId = await getAssociationTypeId(COURSE_OBJECT_TYPE, 'contact', 'contact');
+    const companyAssocId = await getAssociationTypeId(COURSE_OBJECT_TYPE, 'company', 'company');
+  
+    if (!contactAssocId) {
+      throw new Error('❌ Could not find association type ID for Course → Contact');
+    }
+  
+    // Associate contact
+    const contactAssociateUrl = `https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}/${courseObjectId}/associations/contact/${contactId}/${contactAssocId}`;
     await axios.put(contactAssociateUrl, {}, { headers: hubheaders });
   
-    // 5. Associate company to course (if found)
-    if (companyId) {
-      const companyAssociateUrl = `https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}/${courseObjectId}/associations/company/${companyId}/courses_to_companies`;
+    // Associate company if available
+    if (companyId && companyAssocId) {
+      const companyAssociateUrl = `https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}/${courseObjectId}/associations/company/${companyId}/${companyAssocId}`;
       try {
         const associateResp = await axios.put(companyAssociateUrl, {}, { headers: hubheaders });
         console.log("✅ Associated course with company:", associateResp.data);
@@ -122,86 +138,85 @@ async function upsertCourseAndAssociateCustomer(courseId, shopifyCustomer, cours
     }
   }
   
-
-router.post('/webhook/orders/paid', async (req, res) => {
-  try {
-    const order = req.body;
-    let tags = order.tags || "";
-
-    if (!order || !order.customer || !order.customer.id || !order.id || !order.total_price || !order.line_items) {
-      console.error("❌ Invalid order or missing customer data");
-      return res.status(400).send("Invalid order data.");
-    }
-
-    const customerId = order.customer.id;
-    const orderId = order.id;
-    const url = `https://${SHOPIFY_STORE}/admin/api/2023-01/orders/${orderId}.json`;
-
-    const lineItems = order.line_items.map(item => ({
-      productId: item.product_id || null,
-      variantID: item.variant_id || null,
-      productTitle: item.title || "Unknown Product",
-      productName: item.name || "Unknown Product",
-      tags: Array.isArray(item.tags) ? item.tags : [],
-      sku: item.sku || null,
-      discountCodes: order.discount_applications || [],
-    }));
-
-    for (const item of lineItems) {
-      const productSku = item.sku;
-      if (productSku.includes("both-days")) {
-        const parts = item.productTitle.split(/[,\s-]+/);
-        const location = parts.slice(0, 2).join('-');
-        const month = parts[3];
-        const dayRange = parts[4].replace(/\D/g, '') + "-" + parts[6].replace(/\D/g, '');
-        const year = parts[7];
-        const newTag = ` ${location}-${month}-${dayRange}-${year}`;
-        tags = newTag;
-
-        const updatedTags = tags;
-        const body = JSON.stringify({
-          order: {
-            id: orderId,
-            tags: updatedTags
-          }
-        });
-
-        const response = await axios.put(url, body, {
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN
-          }
-        });
-
-        if (response.status >= 200 && response.status < 300) {
-          console.log('✅ Order tags updated successfully');
-        } else {
-          console.error('❌ Error updating order tags:', response.data);
-        }
-
-        await upsertCourseAndAssociateCustomer(newTag.trim(), order.customer, order.customer);
-
-        const userRef = db.collection('hubspot-classes').doc(`DC-${orderId}`);
-        const userDoc = await userRef.get();
-        if (!userDoc.exists) {
-          await userRef.set({
-            customerId,
-            orderId,
-            tags: updatedTags || ""
-          });
-        } else {
-          await userRef.set({ tags: updatedTags }, { merge: true });
-        }
-
-        return res.status(200).send("✅ Order processed successfully to HubSpot.");
+  router.post('/webhook/orders/paid', async (req, res) => {
+    try {
+      const order = req.body;
+      let tags = order.tags || "";
+  
+      if (!order || !order.customer || !order.customer.id || !order.id || !order.total_price || !order.line_items) {
+        console.error("❌ Invalid order or missing customer data");
+        return res.status(400).send("Invalid order data.");
       }
+  
+      const customerId = order.customer.id;
+      const orderId = order.id;
+      const url = `https://${SHOPIFY_STORE}/admin/api/2023-01/orders/${orderId}.json`;
+  
+      const lineItems = order.line_items.map(item => ({
+        productId: item.product_id || null,
+        variantID: item.variant_id || null,
+        productTitle: item.title || "Unknown Product",
+        productName: item.name || "Unknown Product",
+        tags: Array.isArray(item.tags) ? item.tags : [],
+        sku: item.sku || null,
+        discountCodes: order.discount_applications || [],
+      }));
+  
+      for (const item of lineItems) {
+        const productSku = item.sku;
+        if (productSku.includes("both-days")) {
+          const parts = item.productTitle.split(/[,\s-]+/);
+          const location = parts.slice(0, 2).join('-');
+          const month = parts[3];
+          const dayRange = parts[4].replace(/\D/g, '') + "-" + parts[6].replace(/\D/g, '');
+          const year = parts[7];
+          const newTag = ` ${location}-${month}-${dayRange}-${year}`;
+          tags = newTag;
+  
+          const updatedTags = tags;
+          const body = JSON.stringify({
+            order: {
+              id: orderId,
+              tags: updatedTags
+            }
+          });
+  
+          const response = await axios.put(url, body, {
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN
+            }
+          });
+  
+          if (response.status >= 200 && response.status < 300) {
+            console.log('✅ Order tags updated successfully');
+          } else {
+            console.error('❌ Error updating order tags:', response.data);
+          }
+  
+          await upsertCourseAndAssociateCustomer(newTag.trim(), order.customer, order.customer);
+  
+          const userRef = db.collection('hubspot-classes').doc(`DC-${orderId}`);
+          const userDoc = await userRef.get();
+          if (!userDoc.exists) {
+            await userRef.set({
+              customerId,
+              orderId,
+              tags: updatedTags || ""
+            });
+          } else {
+            await userRef.set({ tags: updatedTags }, { merge: true });
+          }
+  
+          return res.status(200).send("✅ Order processed successfully to HubSpot.");
+        }
+      }
+  
+      res.status(200).send("No qualifying product found.");
+    } catch (error) {
+      console.error("❌ Error processing order webhook:", error?.response?.data || error.message);
+      res.status(500).send("Internal server error.");
     }
-
-    res.status(200).send("No qualifying product found.");
-  } catch (error) {
-    console.error("❌ Error processing order webhook:", error?.response?.data || error.message);
-    res.status(500).send("Internal server error.");
-  }
-});
-
-module.exports = router;
+  });
+  
+  module.exports = router;
