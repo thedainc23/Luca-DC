@@ -104,7 +104,7 @@ async function getAssociationTypeId(fromType, toType, labelContains) {
       const createResp = await axios.post(createUrl, {
         properties: {
           class_id: courseId, // changed from course_id
-          name: courseId
+          hs_course_name: courseId
         }
       }, { headers: hubheaders });
       courseObjectId = createResp.data.id;
