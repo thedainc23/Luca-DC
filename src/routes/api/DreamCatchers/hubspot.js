@@ -214,14 +214,12 @@ async function getAssociationTypeId(fromType, toType, labelContains) {
   
       res.status(200).send("No qualifying product found.");
     } catch (error) {
-      console.error("❌ Error processing order webhook:", {
-        message: error.message,
-        status: error?.response?.status,
-        data: error?.response?.data,
-        url: error?.config?.url,
-        method: error?.config?.method,
-        body: error?.config?.data
-      });
+        console.error("❌ Error creating HubSpot object:", {
+            message: error?.response?.data?.message,
+            requiredProperties: error?.response?.data?.context?.properties,
+            status: error?.response?.status,
+            data: error?.response?.data
+        });
   
       res.status(500).send("Internal server error.");
     }
