@@ -6,7 +6,8 @@ const axios = require('axios');
 const SHOPIFY_STORE = "www.dreamcatchers.com";
 const SHOPIFY_ACCESS_TOKEN = "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";
 
-const HUBSPOT_TOKEN = 'pat-na1-e5f8e2e6-07e7-47aa-b1be-fda63286ed7b';
+const HUBSPOT_TOKENN = 'pat-na1-e5f8e2e6-07e7-47aa-b1be-fda63286ed7b';
+const HUBSPOT_TOKEN = 'pat-na1-ba55e700-bee3-4223-8a2c-580b4757fa23'
 const hubheaders = {
   Authorization: `Bearer ${HUBSPOT_TOKEN}`,
   'Content-Type': 'application/json'
