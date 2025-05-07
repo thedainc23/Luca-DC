@@ -84,14 +84,27 @@ async function getAssociationTypeId(fromType, toType, labelContains) {
   
     const searchUrl = `https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}/search`;
     const courseSearchBody = {
-        filterGroups: [{
-          filters: [{
-            propertyName: 'hs_course_id', // changed from course_id
-            operator: 'EQ',
-            value: courseId
-          }]
-        }],
-        properties: ['hs_course_id'] // changed from course_id
+        filterGroups: [
+          {
+            filters: [
+              {
+                propertyName: 'hs_course_id',
+                operator: 'EQ',
+                value: courseId
+              }
+            ]
+          },
+          {
+            filters: [
+              {
+                propertyName: 'hs_course_name',
+                operator: 'EQ',
+                value: courseId
+              }
+            ]
+          }
+        ],
+        properties: ['hs_course_id', 'hs_course_name']
       };
   
     const searchResp = await axios.post(searchUrl, courseSearchBody, { headers: hubheaders });
@@ -105,13 +118,23 @@ async function getAssociationTypeId(fromType, toType, labelContains) {
       console.log("🔍 Search results:", JSON.stringify(searchResp.data.results, null, 2));
 
 
-      const createResp = await axios.post(createUrl, {
-        properties: {
-          hs_course_id: courseId, // changed from course_id
-          hs_course_name: courseId
-        }
-      }, { headers: hubheaders });
-      courseObjectId = createResp.data.id;
+      try {
+        const createResp = await axios.post(createUrl, {
+          properties: {
+            hs_course_id: courseId,
+            hs_course_name: courseId
+          }
+        }, { headers: hubheaders });
+      
+        courseObjectId = createResp.data.id;
+      } catch (err) {
+        console.error("❌ Failed to create course object:", {
+          message: err?.response?.data?.message,
+          data: err?.response?.data
+        });
+      
+        throw err; // rethrow or handle fallback logic
+      }
     }
   
     // Fetch proper association type IDs
