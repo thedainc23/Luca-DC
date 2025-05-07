@@ -214,7 +214,15 @@ async function getAssociationTypeId(fromType, toType, labelContains) {
   
       res.status(200).send("No qualifying product found.");
     } catch (error) {
-      console.error("❌ Error processing order webhook:", error?.response?.data || error.message);
+      console.error("❌ Error processing order webhook:", {
+        message: error.message,
+        status: error?.response?.status,
+        data: error?.response?.data,
+        url: error?.config?.url,
+        method: error?.config?.method,
+        body: error?.config?.data
+      });
+  
       res.status(500).send("Internal server error.");
     }
   });
