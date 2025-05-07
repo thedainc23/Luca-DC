@@ -84,15 +84,15 @@ async function getAssociationTypeId(fromType, toType, labelContains) {
   
     const searchUrl = `https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}/search`;
     const courseSearchBody = {
-      filterGroups: [{
-        filters: [{
-          propertyName: 'courseId',
-          operator: 'EQ',
-          value: courseId
-        }]
-      }],
-      properties: ['courseId']
-    };
+        filterGroups: [{
+          filters: [{
+            propertyName: 'class_id', // changed from course_id
+            operator: 'EQ',
+            value: courseId
+          }]
+        }],
+        properties: ['class_id'] // changed from course_id
+      };
   
     const searchResp = await axios.post(searchUrl, courseSearchBody, { headers: hubheaders });
     let courseObjectId;
@@ -103,7 +103,7 @@ async function getAssociationTypeId(fromType, toType, labelContains) {
       const createUrl = `https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}`;
       const createResp = await axios.post(createUrl, {
         properties: {
-          course_id: courseId,
+          class_id: courseId, // changed from course_id
           name: courseId
         }
       }, { headers: hubheaders });
