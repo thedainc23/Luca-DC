@@ -86,12 +86,12 @@ async function getAssociationTypeId(fromType, toType, labelContains) {
     const courseSearchBody = {
         filterGroups: [{
           filters: [{
-            propertyName: 'class_id', // changed from course_id
+            propertyName: 'hs_course_id', // changed from course_id
             operator: 'EQ',
             value: courseId
           }]
         }],
-        properties: ['class_id'] // changed from course_id
+        properties: ['hs_course_id'] // changed from course_id
       };
   
     const searchResp = await axios.post(searchUrl, courseSearchBody, { headers: hubheaders });
@@ -107,7 +107,7 @@ async function getAssociationTypeId(fromType, toType, labelContains) {
 
       const createResp = await axios.post(createUrl, {
         properties: {
-          class_id: courseId, // changed from course_id
+          hs_course_id: courseId, // changed from course_id
           hs_course_name: courseId
         }
       }, { headers: hubheaders });
