@@ -86,12 +86,12 @@ async function getAssociationTypeId(fromType, toType, labelContains) {
     const courseSearchBody = {
       filterGroups: [{
         filters: [{
-          propertyName: 'course_id',
+          propertyName: 'courseId',
           operator: 'EQ',
           value: courseId
         }]
       }],
-      properties: ['course_id']
+      properties: ['courseId']
     };
   
     const searchResp = await axios.post(searchUrl, courseSearchBody, { headers: hubheaders });
