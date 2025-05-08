@@ -6,8 +6,7 @@ const axios = require('axios');
 const SHOPIFY_STORE = "www.dreamcatchers.com";
 const SHOPIFY_ACCESS_TOKEN = "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";
 
-const HUBSPOT_TOKENN = 'pat-na1-e5f8e2e6-07e7-47aa-b1be-fda63286ed7b';
-const HUBSPOT_TOKEN = 'pat-na1-ba55e700-bee3-4223-8a2c-580b4757fa23'
+const HUBSPOT_TOKEN = 'pat-na1-ba55e700-bee3-4223-8a2c-580b4757fa23';
 const hubheaders = {
   Authorization: `Bearer ${HUBSPOT_TOKEN}`,
   'Content-Type': 'application/json'
@@ -93,15 +92,6 @@ async function upsertCourseAndAssociateCustomer(courseId, shopifyCustomer, cours
             value: courseId
           }
         ]
-      },
-      {
-        filters: [
-          {
-            propertyName: 'hs_course_name',
-            operator: 'EQ',
-            value: courseId
-          }
-        ]
       }
     ],
     properties: ['hs_course_id', 'hs_course_name']
@@ -122,7 +112,10 @@ async function upsertCourseAndAssociateCustomer(courseId, shopifyCustomer, cours
         properties: {
           hs_course_id: courseId,
           hs_course_name: courseId,
-          hs_pipeline_stage: 'new' // 👈 Use the internal value of your dropdown option
+          hs_pipeline_stage: '3e1a235d-1a64-4b7a-9ed5-7f0273ebd774', // Pipeline Stage ID for Created
+          hs_enrollment_capacity: 0, // Replace with actual capacity if needed
+          course_date_and_time: new Date().toISOString(), // Current date/time as an example
+          last_day_to_sign_up: new Date('2025-06-01').toISOString() // Example of last signup date
         }
       }, { headers: hubheaders });
 
@@ -133,10 +126,11 @@ async function upsertCourseAndAssociateCustomer(courseId, shopifyCustomer, cours
         data: err?.response?.data
       });
 
-      throw err;
+      throw err; // rethrow or handle fallback logic
     }
   }
 
+  // Fetch proper association type IDs
   const contactAssocId = await getAssociationTypeId(COURSE_OBJECT_TYPE, 'contact', 'contact');
   const companyAssocId = await getAssociationTypeId(COURSE_OBJECT_TYPE, 'company', 'company');
 
@@ -144,9 +138,11 @@ async function upsertCourseAndAssociateCustomer(courseId, shopifyCustomer, cours
     throw new Error('❌ Could not find association type ID for Course → Contact');
   }
 
+  // Associate contact
   const contactAssociateUrl = `https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}/${courseObjectId}/associations/contact/${contactId}/${contactAssocId}`;
   await axios.put(contactAssociateUrl, {}, { headers: hubheaders });
 
+  // Associate company if available
   if (companyId && companyAssocId) {
     const companyAssociateUrl = `https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}/${courseObjectId}/associations/company/${companyId}/${companyAssocId}`;
     try {
