@@ -122,7 +122,8 @@ async function getAssociationTypeId(fromType, toType, labelContains) {
         const createResp = await axios.post(createUrl, {
           properties: {
             hs_course_id: courseId,
-            hs_course_name: courseId
+            hs_course_name: courseId,
+            hs_pipeline_stage: 'new' // 👈 Use the internal value of your dropdown option
           }
         }, { headers: hubheaders });
       
