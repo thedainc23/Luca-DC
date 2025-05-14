@@ -12,7 +12,7 @@ const hubheaders = {
   'Content-Type': 'application/json'
 };
 
-const COURSE_OBJECT_TYPE = '47960627'; // Your HubSpot custom object type ID
+const COURSE_OBJECT_TYPE = '0-410'; // Your HubSpot custom object type ID
 
 // Fetch association type IDs
 async function getAssociationTypeId(fromType, toType, labelContains) {
