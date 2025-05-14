@@ -39,7 +39,7 @@ async function getAssociationTypeId(fromType, toType, nameContains) {
   return assoc?.id;
 }
 
-async function upsertCourseAndAssociateCustomer(courseId, shopifyCustomer) {
+async function upsertCourseAndAssociateCustomer(courseId, tagid, shopifyCustomer) {
   const email = shopifyCustomer.email;
   let contactId, companyId;
 
@@ -103,7 +103,7 @@ async function upsertCourseAndAssociateCustomer(courseId, shopifyCustomer) {
     `https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}/search`,
     {
       filterGroups: [{
-        filters: [{ propertyName: 'hs_course_id', operator: 'EQ', value: courseId }]
+        filters: [{ propertyName: 'hs_course_id', operator: 'EQ', value: tagId }]
       }],
       properties: ['hs_course_id']
     },
@@ -119,7 +119,7 @@ async function upsertCourseAndAssociateCustomer(courseId, shopifyCustomer) {
       {
         properties: {
           hs_course_id: courseId,
-          hs_course_name: courseId,
+          hs_course_name: tagId,
           hs_pipeline_stage: '3e1a235d-1a64-4b7a-9ed5-7f0273ebd774',
           hs_enrollment_capacity: 40,
           course_date_and_time: new Date().toISOString(),
@@ -233,8 +233,9 @@ for (const item of order.line_items) {
     }
 
     // Sync with HubSpot: Use the new tag as courseId
+    const courseId = parseCourseIdFromTitle(item.title);
     const confirmedCourseId = newTag; // Use the newTag instead of item.title
-    await upsertCourseAndAssociateCustomer(confirmedCourseId, order.customer);
+    await upsertCourseAndAssociateCustomer(courseId, confirmedCourseId, order.customer);
 
         return res.status(200).send("✅ Order processed successfully to Hubspot.");
       }
