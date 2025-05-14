@@ -5,14 +5,14 @@ const axios = require('axios');
 
 const SHOPIFY_STORE = "www.dreamcatchers.com";
 const SHOPIFY_ACCESS_TOKEN = "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";
-
 const HUBSPOT_TOKEN = 'pat-na1-ba55e700-bee3-4223-8a2c-580b4757fa23';
+
 const hubheaders = {
   Authorization: `Bearer ${HUBSPOT_TOKEN}`,
   'Content-Type': 'application/json'
 };
 
-const COURSE_OBJECT_TYPE = '0-410';
+const COURSE_OBJECT_TYPE = '0-410'; // Replace with actual course object ID
 
 // Util: Parse course ID from product title
 function parseCourseIdFromTitle(title) {
@@ -25,17 +25,27 @@ function parseCourseIdFromTitle(title) {
   }
 }
 
-async function getAssociationTypeId(fromType, toType, labelContains) {
-  const url = `https://api.hubapi.com/crm/v4/associations/schema/${fromType}/${toType}`;
-  const resp = await axios.get(url, { headers: hubheaders });
+// Get the properties for the course object
+async function getCourseObjectProperties() {
+  const url = `https://api.hubapi.com/crm/v3/properties/${COURSE_OBJECT_TYPE}`;
+  const response = await axios.get(url, {
+    headers: hubheaders
+  });
 
-  const match = resp.data.results.find(a =>
-    a.label && a.label.toLowerCase().includes(labelContains.toLowerCase())
-  );
-
-  return match ? match.associationTypeId : null;
+  return response.data.results;
 }
 
+// Get the association type for linking contacts to courses (attendees)
+async function getAttendeeAssociationTypeId() {
+  const url = `https://api.hubapi.com/crm/v4/associations/schema/${COURSE_OBJECT_TYPE}/contact`;
+  const response = await axios.get(url, {
+    headers: hubheaders
+  });
+
+  return response.data.results;
+}
+
+// Upsert course and associate customer (attendee)
 async function upsertCourseAndAssociateCustomer(courseId, shopifyCustomer) {
   const email = shopifyCustomer.email;
   let contactId, companyId;
@@ -132,23 +142,26 @@ async function upsertCourseAndAssociateCustomer(courseId, shopifyCustomer) {
   }
 
   // Associations
-  const contactAssocId = await getAssociationTypeId(COURSE_OBJECT_TYPE, 'contact', 'contact');
-  const companyAssocId = await getAssociationTypeId(COURSE_OBJECT_TYPE, 'company', 'company');
+  const attendeeAssocId = await getAttendeeAssociationTypeId();
 
-  if (contactAssocId) {
+  if (attendeeAssocId) {
     await axios.put(
-      `https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}/${courseObjectId}/associations/contact/${contactId}/${contactAssocId}`,
+      `https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}/${courseObjectId}/associations/contact/${contactId}/${attendeeAssocId}`,
       {},
       { headers: hubheaders }
     );
   }
 
-  if (companyId && companyAssocId) {
-    await axios.put(
-      `https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}/${courseObjectId}/associations/company/${companyId}/${companyAssocId}`,
-      {},
-      { headers: hubheaders }
-    );
+  // If a company exists, you can associate it here as well (optional)
+  if (companyId) {
+    const companyAssocId = await getAssociationTypeId(COURSE_OBJECT_TYPE, 'company', 'company');
+    if (companyAssocId) {
+      await axios.put(
+        `https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}/${courseObjectId}/associations/company/${companyId}/${companyAssocId}`,
+        {},
+        { headers: hubheaders }
+      );
+    }
   }
 }
 
