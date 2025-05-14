@@ -184,30 +184,48 @@ router.post('/webhook/orders/paid', async (req, res) => {
 
       const confirmedCourseId = await upsertCourseAndAssociateCustomer(courseId, order.customer);
 
-      // 🏷️ Tag the Shopify order
-      const shopifyTagUrl = `https://${SHOPIFY_STORE}/admin/api/2023-01/orders/${orderId}.json`;
-      const tagBody = JSON.stringify({
-        order: {
-          id: orderId,
-          tags: confirmedCourseId
-        }
-      });
-
+      // 🏷️ Tag the Shopify order (append, don't overwrite)
       try {
-        const tagResponse = await axios.put(shopifyTagUrl, tagBody, {
+        const shopifyGetUrl = `https://${SHOPIFY_STORE}/admin/api/2023-01/orders/${orderId}.json`;
+        const getResp = await axios.get(shopifyGetUrl, {
           headers: {
-            'Content-Type': 'application/json',
             'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN
           }
         });
 
-        if (tagResponse.status >= 200 && tagResponse.status < 300) {
-          console.log(`🏷️ Order ${orderId} tagged with: ${confirmedCourseId}`);
+        const existingTags = getResp.data.order.tags
+          ? getResp.data.order.tags.split(',').map(tag => tag.trim())
+          : [];
+
+        if (!existingTags.includes(confirmedCourseId)) {
+          existingTags.push(confirmedCourseId);
+        }
+
+        const updatedTags = existingTags.join(', ');
+
+        const updateResp = await axios.put(
+          shopifyGetUrl,
+          {
+            order: {
+              id: orderId,
+              tags: updatedTags
+            }
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN
+            }
+          }
+        );
+
+        if (updateResp.status >= 200 && updateResp.status < 300) {
+          console.log(`🏷️ Order ${orderId} successfully tagged with: ${confirmedCourseId}`);
         } else {
-          console.error('❌ Error updating order tags:', tagResponse.data);
+          console.error('❌ Error updating Shopify tags:', updateResp.data);
         }
       } catch (tagErr) {
-        console.error('❌ Exception updating Shopify tags:', tagErr.response?.data || tagErr.message);
+        console.error('❌ Shopify tag update failed:', tagErr.response?.data || tagErr.message);
       }
 
       const userRef = db.collection('hubspot-classes').doc(`DC-${orderId}`);
