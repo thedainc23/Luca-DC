@@ -12,50 +12,37 @@ const hubheaders = {
   'Content-Type': 'application/json'
 };
 
-const COURSE_OBJECT_TYPE = '0-410'; // Replace with actual course object ID
+const COURSE_OBJECT_TYPE = '0-410';
+const EXPECTED_SKU = 'both-days';
 
-// Util: Parse course ID from product title
 function parseCourseIdFromTitle(title) {
   try {
-    const baseTitle = title.split(' - ')[0].trim(); // Always take the first part before " - "
-    return baseTitle; // e.g., "Miami, FL, USA- June 8th & 9th, 2025"
+    const baseTitle = title.trim();
+    return baseTitle;
   } catch (err) {
     console.error("❌ Course ID parse error:", err);
     return null;
   }
 }
 
-// Check if SKU matches expected 'both-days'
-function checkSkuForBothDays(sku) {
-  return sku === 'both-days';
-}
-
-// Get the properties for the course object
-async function getCourseObjectProperties() {
-  const url = `https://api.hubapi.com/crm/v3/properties/${COURSE_OBJECT_TYPE}`;
-  const response = await axios.get(url, {
-    headers: hubheaders
-  });
-
-  return response.data.results;
-}
-
-// Get the association type for linking contacts to courses (attendees)
 async function getAttendeeAssociationTypeId() {
   const url = `https://api.hubapi.com/crm/v4/associations/schema/${COURSE_OBJECT_TYPE}/contact`;
-  const response = await axios.get(url, {
-    headers: hubheaders
-  });
-
-  return response.data.results;
+  const response = await axios.get(url, { headers: hubheaders });
+  const assoc = response.data.results.find(r => r.name.toLowerCase().includes("attendee"));
+  return assoc?.id;
 }
 
-// Upsert course and associate customer (attendee)
+async function getAssociationTypeId(fromType, toType, nameContains) {
+  const url = `https://api.hubapi.com/crm/v4/associations/schema/${fromType}/${toType}`;
+  const response = await axios.get(url, { headers: hubheaders });
+  const assoc = response.data.results.find(r => r.name.toLowerCase().includes(nameContains));
+  return assoc?.id;
+}
+
 async function upsertCourseAndAssociateCustomer(courseId, shopifyCustomer) {
   const email = shopifyCustomer.email;
   let contactId, companyId;
 
-  // Find or create contact
   const searchBody = {
     filterGroups: [{
       filters: [{
@@ -90,7 +77,6 @@ async function upsertCourseAndAssociateCustomer(courseId, shopifyCustomer) {
     contactId = contactCreateResp.data.id;
   }
 
-  // Optionally find company by domain
   const domain = email?.split('@')[1];
   if (domain) {
     const companySearchResp = await axios.post(
@@ -113,7 +99,6 @@ async function upsertCourseAndAssociateCustomer(courseId, shopifyCustomer) {
     }
   }
 
-  // Search or create course object
   const courseSearchResp = await axios.post(
     `https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}/search`,
     {
@@ -146,9 +131,7 @@ async function upsertCourseAndAssociateCustomer(courseId, shopifyCustomer) {
     courseObjectId = courseCreateResp.data.id;
   }
 
-  // Associations
   const attendeeAssocId = await getAttendeeAssociationTypeId();
-
   if (attendeeAssocId) {
     await axios.put(
       `https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}/${courseObjectId}/associations/contact/${contactId}/${attendeeAssocId}`,
@@ -157,7 +140,6 @@ async function upsertCourseAndAssociateCustomer(courseId, shopifyCustomer) {
     );
   }
 
-  // If a company exists, you can associate it here as well (optional)
   if (companyId) {
     const companyAssocId = await getAssociationTypeId(COURSE_OBJECT_TYPE, 'company', 'company');
     if (companyAssocId) {
@@ -168,6 +150,8 @@ async function upsertCourseAndAssociateCustomer(courseId, shopifyCustomer) {
       );
     }
   }
+
+  return courseId; // Return for tagging
 }
 
 router.post('/webhook/orders/paid', async (req, res) => {
@@ -184,35 +168,62 @@ router.post('/webhook/orders/paid', async (req, res) => {
     for (const item of order.line_items) {
       const rawTitle = item.title;
       console.log(`Checking raw product title: '${rawTitle}' | Quantity: ${item.quantity}`);
-      
-      // Check if the SKU is 'both-days'
-      if (checkSkuForBothDays(item.sku)) {
-        const courseId = parseCourseIdFromTitle(rawTitle);
-        if (!courseId) {
-          console.error(`❌ Could not parse course ID from: ${rawTitle}`);
-          continue;
-        }
 
-        console.log(`✅ Parsed course ID: ${courseId}`);
-        
-        // Proceed with upserting the course and associating the customer
-        await upsertCourseAndAssociateCustomer(courseId, order.customer);
-
-        const userRef = db.collection('hubspot-classes').doc(`DC-${orderId}`);
-        const userDoc = await userRef.get();
-
-        if (!userDoc.exists) {
-          await userRef.set({
-            customerId,
-            orderId,
-            tags: courseId
-          });
-        } else {
-          await userRef.set({ tags: courseId }, { merge: true });
-        }
-
-        return res.status(200).send("✅ Order processed and synced with HubSpot.");
+      if (item.sku !== EXPECTED_SKU) {
+        console.log("⏭️ Skipping item due to unmatched SKU:", item.sku);
+        continue;
       }
+
+      const courseId = parseCourseIdFromTitle(rawTitle);
+      if (!courseId) {
+        console.error(`❌ Could not parse course ID from: ${rawTitle}`);
+        continue;
+      }
+
+      console.log(`✅ Parsed course ID: ${courseId}`);
+
+      const confirmedCourseId = await upsertCourseAndAssociateCustomer(courseId, order.customer);
+
+      // 🏷️ Tag the Shopify order
+      const shopifyTagUrl = `https://${SHOPIFY_STORE}/admin/api/2023-01/orders/${orderId}.json`;
+      const tagBody = JSON.stringify({
+        order: {
+          id: orderId,
+          tags: confirmedCourseId
+        }
+      });
+
+      try {
+        const tagResponse = await axios.put(shopifyTagUrl, tagBody, {
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN
+          }
+        });
+
+        if (tagResponse.status >= 200 && tagResponse.status < 300) {
+          console.log(`🏷️ Order ${orderId} tagged with: ${confirmedCourseId}`);
+        } else {
+          console.error('❌ Error updating order tags:', tagResponse.data);
+        }
+      } catch (tagErr) {
+        console.error('❌ Exception updating Shopify tags:', tagErr.response?.data || tagErr.message);
+      }
+
+      const userRef = db.collection('hubspot-classes').doc(`DC-${orderId}`);
+      const userDoc = await userRef.get();
+
+      if (!userDoc.exists) {
+        await userRef.set({
+          customerId,
+          orderId,
+          tags: confirmedCourseId
+        });
+      } else {
+        await userRef.set({ tags: confirmedCourseId }, { merge: true });
+      }
+
+      return res.status(200).send("✅ Order processed and synced with HubSpot.");
     }
 
     res.status(200).send("No qualifying products found.");
