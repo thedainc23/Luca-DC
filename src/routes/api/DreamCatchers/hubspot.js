@@ -13,6 +13,7 @@ const hubheaders = {
 };
 
 const COURSE_OBJECT_TYPE = '0-410'; // Replace with actual course object ID
+const BOTH_DAYS_SKU = 'both-days'; // Replace with the actual SKU for the "both days" course
 
 // Util: Parse course ID from product title
 function parseCourseIdFromTitle(title) {
@@ -178,32 +179,36 @@ router.post('/webhook/orders/paid', async (req, res) => {
 
     for (const item of order.line_items) {
       const rawTitle = item.title;
-      console.log(`Checking raw product title: '${rawTitle}' | Quantity: ${item.quantity}`);
+      const sku = item.sku;  // Get SKU to check if it's the "both days" variant
+      console.log(`Checking raw product title: '${rawTitle}' | Quantity: ${item.quantity} | SKU: ${sku}`);
 
-      const courseId = parseCourseIdFromTitle(rawTitle);
-      if (!courseId) {
-        console.error(`❌ Could not parse course ID from: ${rawTitle}`);
-        continue;
+      // Only proceed if SKU matches the "both days" SKU
+      if (sku === BOTH_DAYS_SKU) {
+        const courseId = parseCourseIdFromTitle(rawTitle);
+        if (!courseId) {
+          console.error(`❌ Could not parse course ID from: ${rawTitle}`);
+          continue;
+        }
+
+        console.log(`✅ Parsed course ID: ${courseId}`);
+
+        await upsertCourseAndAssociateCustomer(courseId, order.customer);
+
+        const userRef = db.collection('hubspot-classes').doc(`DC-${orderId}`);
+        const userDoc = await userRef.get();
+
+        if (!userDoc.exists) {
+          await userRef.set({
+            customerId,
+            orderId,
+            tags: courseId
+          });
+        } else {
+          await userRef.set({ tags: courseId }, { merge: true });
+        }
+
+        return res.status(200).send("✅ Order processed and synced with HubSpot.");
       }
-
-      console.log(`✅ Parsed course ID: ${courseId}`);
-
-      await upsertCourseAndAssociateCustomer(courseId, order.customer);
-
-      const userRef = db.collection('hubspot-classes').doc(`DC-${orderId}`);
-      const userDoc = await userRef.get();
-
-      if (!userDoc.exists) {
-        await userRef.set({
-          customerId,
-          orderId,
-          tags: courseId
-        });
-      } else {
-        await userRef.set({ tags: courseId }, { merge: true });
-      }
-
-      return res.status(200).send("✅ Order processed and synced with HubSpot.");
     }
 
     res.status(200).send("No qualifying products found.");
