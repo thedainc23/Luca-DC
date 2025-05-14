@@ -165,27 +165,21 @@ router.post('/webhook/orders/paid', async (req, res) => {
     const customerId = order.customer.id;
     const orderId = order.id;
 
+    // Loop through line items
     for (const item of order.line_items) {
-      const rawTitle = item.title;
-      console.log(`Checking raw product title: '${rawTitle}' | Quantity: ${item.quantity}`);
+      const productSku = item.sku;
+      if (productSku.includes(EXPECTED_SKU)) {
+        const parts = item.title.split(/[,\s-]+/);
+        // Extract location and event date
+        const location = parts.slice(0, 2).join('-'); // "Dallas-TX"
+        const month = parts[3]; // "May"
+        const dayRange = parts[4].replace(/\D/g, '') + "-" + parts[6].replace(/\D/g, ''); // "4-5"
+        const year = parts[7]; // "2025"
 
-      if (item.sku !== EXPECTED_SKU) {
-        console.log("⏭️ Skipping item due to unmatched SKU:", item.sku);
-        continue;
-      }
+        // Generate new tag
+        const newTag = `${location}-${month}-${dayRange}-${year}`;
 
-      const courseId = parseCourseIdFromTitle(rawTitle);
-      if (!courseId) {
-        console.error(`❌ Could not parse course ID from: ${rawTitle}`);
-        continue;
-      }
-
-      console.log(`✅ Parsed course ID: ${courseId}`);
-
-      const confirmedCourseId = await upsertCourseAndAssociateCustomer(courseId, order.customer);
-
-      // 🏷️ Tag the Shopify order (append, don't overwrite)
-      try {
+        // Get existing order tags
         const shopifyGetUrl = `https://${SHOPIFY_STORE}/admin/api/2023-01/orders/${orderId}.json`;
         const getResp = await axios.get(shopifyGetUrl, {
           headers: {
@@ -193,55 +187,57 @@ router.post('/webhook/orders/paid', async (req, res) => {
           }
         });
 
+        // Append if new tag is not already there
         const existingTags = getResp.data.order.tags
           ? getResp.data.order.tags.split(',').map(tag => tag.trim())
           : [];
 
-        if (!existingTags.includes(confirmedCourseId)) {
-          existingTags.push(confirmedCourseId);
+        if (!existingTags.includes(newTag)) {
+          existingTags.push(newTag);
         }
 
         const updatedTags = existingTags.join(', ');
 
-        const updateResp = await axios.put(
-          shopifyGetUrl,
-          {
-            order: {
-              id: orderId,
-              tags: updatedTags
-            }
-          },
-          {
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN
-            }
+        // Update order tags in Shopify
+        const body = JSON.stringify({
+          order: {
+            id: orderId,
+            tags: updatedTags
           }
-        );
-
-        if (updateResp.status >= 200 && updateResp.status < 300) {
-          console.log(`🏷️ Order ${orderId} successfully tagged with: ${confirmedCourseId}`);
-        } else {
-          console.error('❌ Error updating Shopify tags:', updateResp.data);
-        }
-      } catch (tagErr) {
-        console.error('❌ Shopify tag update failed:', tagErr.response?.data || tagErr.message);
-      }
-
-      const userRef = db.collection('hubspot-classes').doc(`DC-${orderId}`);
-      const userDoc = await userRef.get();
-
-      if (!userDoc.exists) {
-        await userRef.set({
-          customerId,
-          orderId,
-          tags: confirmedCourseId
         });
-      } else {
-        await userRef.set({ tags: confirmedCourseId }, { merge: true });
-      }
 
-      return res.status(200).send("✅ Order processed and synced with HubSpot.");
+        const response = await axios.put(shopifyGetUrl, body, {
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN
+          }
+        });
+
+        if (response.status >= 200 && response.status < 300) {
+          console.log('Order tags updated successfully:', response.data);
+        } else {
+          console.error('Error updating order tags:', response.data);
+        }
+
+        // Sync data to Firestore
+        const userRef = db.collection('hubspot-classes').doc(`DC-${orderId}`);
+        const userDoc = await userRef.get();
+        if (!userDoc.exists) {
+          await userRef.set({
+            customerId,
+            orderId,
+            tags: updatedTags || "",
+          });
+        } else {
+          await userRef.set({ tags: updatedTags }, { merge: true });
+        }
+
+        // Sync with HubSpot
+        const courseId = parseCourseIdFromTitle(item.title);
+        const confirmedCourseId = await upsertCourseAndAssociateCustomer(courseId, order.customer);
+
+        return res.status(200).send("✅ Order processed successfully to Hubspot.");
+      }
     }
 
     res.status(200).send("No qualifying products found.");
