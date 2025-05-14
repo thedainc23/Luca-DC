@@ -166,75 +166,75 @@ router.post('/webhook/orders/paid', async (req, res) => {
     const orderId = order.id;
 
     // Loop through line items
-    for (const item of order.line_items) {
-      const productSku = item.sku;
-      if (productSku.includes(EXPECTED_SKU)) {
-        const parts = item.title.split(/[,\s-]+/);
-        // Extract location and event date
-        const location = parts.slice(0, 2).join('-'); // "Dallas-TX"
-        const month = parts[3]; // "May"
-        const dayRange = parts[4].replace(/\D/g, '') + "-" + parts[6].replace(/\D/g, ''); // "4-5"
-        const year = parts[7]; // "2025"
+for (const item of order.line_items) {
+  const productSku = item.sku;
+  if (productSku.includes(EXPECTED_SKU)) {
+    const parts = item.title.split(/[,\s-]+/);
+    // Extract location and event date
+    const location = parts.slice(0, 2).join('-'); // "Dallas-TX"
+    const month = parts[3]; // "May"
+    const dayRange = parts[4].replace(/\D/g, '') + "-" + parts[6].replace(/\D/g, ''); // "4-5"
+    const year = parts[7]; // "2025"
 
-        // Generate new tag
-        const newTag = `${location}-${month}-${dayRange}-${year}`;
+    // Generate new tag
+    const newTag = `${location}-${month}-${dayRange}-${year}`;
 
-        // Get existing order tags
-        const shopifyGetUrl = `https://${SHOPIFY_STORE}/admin/api/2023-01/orders/${orderId}.json`;
-        const getResp = await axios.get(shopifyGetUrl, {
-          headers: {
-            'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN
-          }
-        });
+    // Get existing order tags
+    const shopifyGetUrl = `https://${SHOPIFY_STORE}/admin/api/2023-01/orders/${orderId}.json`;
+    const getResp = await axios.get(shopifyGetUrl, {
+      headers: {
+        'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN
+      }
+    });
 
-        // Append if new tag is not already there
-        const existingTags = getResp.data.order.tags
-          ? getResp.data.order.tags.split(',').map(tag => tag.trim())
-          : [];
+    // Append if new tag is not already there
+    const existingTags = getResp.data.order.tags
+      ? getResp.data.order.tags.split(',').map(tag => tag.trim())
+      : [];
 
-        if (!existingTags.includes(newTag)) {
-          existingTags.push(newTag);
-        }
+    if (!existingTags.includes(newTag)) {
+      existingTags.push(newTag);
+    }
 
-        const updatedTags = existingTags.join(', ');
+    const updatedTags = existingTags.join(', ');
 
-        // Update order tags in Shopify
-        const body = JSON.stringify({
-          order: {
-            id: orderId,
-            tags: updatedTags
-          }
-        });
+    // Update order tags in Shopify
+    const body = JSON.stringify({
+      order: {
+        id: orderId,
+        tags: updatedTags
+      }
+    });
 
-        const response = await axios.put(shopifyGetUrl, body, {
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN
-          }
-        });
+    const response = await axios.put(shopifyGetUrl, body, {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN
+      }
+    });
 
-        if (response.status >= 200 && response.status < 300) {
-          console.log('Order tags updated successfully:', response.data);
-        } else {
-          console.error('Error updating order tags:', response.data);
-        }
+    if (response.status >= 200 && response.status < 300) {
+      console.log('Order tags updated successfully:', response.data);
+    } else {
+      console.error('Error updating order tags:', response.data);
+    }
 
-        // Sync data to Firestore
-        const userRef = db.collection('hubspot-classes').doc(`DC-${orderId}`);
-        const userDoc = await userRef.get();
-        if (!userDoc.exists) {
-          await userRef.set({
-            customerId,
-            orderId,
-            tags: updatedTags || "",
-          });
-        } else {
-          await userRef.set({ tags: updatedTags }, { merge: true });
-        }
+    // Sync data to Firestore
+    const userRef = db.collection('hubspot-classes').doc(`DC-${orderId}`);
+    const userDoc = await userRef.get();
+    if (!userDoc.exists) {
+      await userRef.set({
+        customerId,
+        orderId,
+        tags: updatedTags || "",
+      });
+    } else {
+      await userRef.set({ tags: updatedTags }, { merge: true });
+    }
 
-        // Sync with HubSpot
-        const courseId = parseCourseIdFromTitle(item.title);
-        const confirmedCourseId = await upsertCourseAndAssociateCustomer(courseId, order.customer);
+    // Sync with HubSpot: Use the new tag as courseId
+    const confirmedCourseId = newTag; // Use the newTag instead of item.title
+    await upsertCourseAndAssociateCustomer(confirmedCourseId, order.customer);
 
         return res.status(200).send("✅ Order processed successfully to Hubspot.");
       }
