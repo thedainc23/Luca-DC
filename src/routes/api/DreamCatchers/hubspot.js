@@ -13,7 +13,6 @@ const hubheaders = {
 };
 
 const COURSE_OBJECT_TYPE = '0-410'; // Replace with actual course object ID
-const BOTH_DAYS_SKU = 'both-days'; // Replace with the actual SKU for the "both days" course
 
 // Util: Parse course ID from product title
 function parseCourseIdFromTitle(title) {
@@ -24,6 +23,11 @@ function parseCourseIdFromTitle(title) {
     console.error("❌ Course ID parse error:", err);
     return null;
   }
+}
+
+// Check if SKU matches expected 'both-days'
+function checkSkuForBothDays(sku) {
+  return sku === 'both-days';
 }
 
 // Get the properties for the course object
@@ -179,11 +183,10 @@ router.post('/webhook/orders/paid', async (req, res) => {
 
     for (const item of order.line_items) {
       const rawTitle = item.title;
-      const sku = item.sku;  // Get SKU to check if it's the "both days" variant
-      console.log(`Checking raw product title: '${rawTitle}' | Quantity: ${item.quantity} | SKU: ${sku}`);
-
-      // Only proceed if SKU matches the "both days" SKU
-      if (sku === BOTH_DAYS_SKU) {
+      console.log(`Checking raw product title: '${rawTitle}' | Quantity: ${item.quantity}`);
+      
+      // Check if the SKU is 'both-days'
+      if (checkSkuForBothDays(item.sku)) {
         const courseId = parseCourseIdFromTitle(rawTitle);
         if (!courseId) {
           console.error(`❌ Could not parse course ID from: ${rawTitle}`);
@@ -191,7 +194,8 @@ router.post('/webhook/orders/paid', async (req, res) => {
         }
 
         console.log(`✅ Parsed course ID: ${courseId}`);
-
+        
+        // Proceed with upserting the course and associating the customer
         await upsertCourseAndAssociateCustomer(courseId, order.customer);
 
         const userRef = db.collection('hubspot-classes').doc(`DC-${orderId}`);
