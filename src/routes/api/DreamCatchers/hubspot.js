@@ -121,7 +121,7 @@ async function upsertCourseAndAssociateCustomer(courseId, shopifyCustomer) {
           hs_course_id: courseId,
           hs_course_name: courseId,
           hs_pipeline_stage: '3e1a235d-1a64-4b7a-9ed5-7f0273ebd774',
-          hs_enrollment_capacity: 0,
+          hs_enrollment_capacity: 40,
           course_date_and_time: new Date().toISOString(),
           last_day_to_sign_up: new Date('2025-06-01').toISOString()
         }
