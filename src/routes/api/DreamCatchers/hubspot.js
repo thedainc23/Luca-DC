@@ -17,23 +17,8 @@ const COURSE_OBJECT_TYPE = '0-410';
 // Util: Parse course ID from product title
 function parseCourseIdFromTitle(title) {
   try {
-    const [locationPart, datePart] = title.split(' - ');
-    if (!locationPart || !datePart) return null;
-
-    const location = locationPart
-      .split(',')[0]
-      .trim()
-      .replace(/\s+/g, '-')
-      .toLowerCase();
-
-    const dateRegex = /([A-Za-z]+\s\d{1,2}(?:st|nd|rd|th)?(?:\s*&\s*\d{1,2}(?:st|nd|rd|th)?)?)\s*(\d{4})/;
-    const match = title.match(dateRegex);
-    if (!match) return null;
-
-    const rawDate = match[1].replace(/\s*&\s*/g, 'and').replace(/\s+/g, '');
-    const year = match[2];
-
-    return `${location}-${rawDate}-${year}`;
+    const baseTitle = title.split(' - ')[0].trim(); // Always take the first part before " - "
+    return baseTitle; // e.g., "Miami, FL, USA- June 8th & 9th, 2025"
   } catch (err) {
     console.error("❌ Course ID parse error:", err);
     return null;
