@@ -1,120 +1,203 @@
 const express = require('express');
-const axios = require('axios');
 const db = require('../../../config/db');
-
 const router = express.Router();
+const axios = require('axios');
 
 const SHOPIFY_STORE = "www.dreamcatchers.com";
 const SHOPIFY_ACCESS_TOKEN = "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";
-const HUBSPOT_TOKEN = 'pat-na1-ba55e700-bee3-4223-8a2c-580b4757fa23';
 
-const HUB_HEADERS = {
+const HUBSPOT_TOKEN = 'pat-na1-ba55e700-bee3-4223-8a2c-580b4757fa23';
+const hubheaders = {
   Authorization: `Bearer ${HUBSPOT_TOKEN}`,
   'Content-Type': 'application/json'
 };
 
-const COURSE_OBJECT_TYPE = '0-410';
-const REQUIRED_PIPELINE_STAGE = '3e1a235d-1a64-4b7a-9ed5-7f0273ebd774';
+const COURSE_OBJECT_TYPE = '0-410'; // Replace with actual ID if incorrect
 
-async function getOrCreateContact(customer) {
-  const email = customer.email;
+function parseCourseIdFromTitle(title) {
+  const match = title.match(/^(.*?)-\s*(\w+\s\d+(?:th)?(?:\s*&\s*\w+\s\d+(?:th)?)?)\s*(\d{4})/i);
+  if (!match) return null;
+
+  const city = match[1].trim().replace(/,/g, '').replace(/\s+/g, '-');
+  const dateStr = match[2].replace(/\s+/g, '').replace('&', 'and');
+  const year = match[3];
+
+  return `${city}-${dateStr}-${year}`;
+}
+
+async function getAssociationTypeId(fromType, toType, labelContains) {
+  const url = `https://api.hubapi.com/crm/v4/associations/schema/${fromType}/${toType}`;
+  const resp = await axios.get(url, { headers: hubheaders });
+
+  const match = resp.data.results.find(a =>
+    a.label && a.label.toLowerCase().includes(labelContains.toLowerCase())
+  );
+
+  return match ? match.associationTypeId : null;
+}
+
+async function upsertCourseAndAssociateCustomer(courseId, shopifyCustomer) {
+  let contactId, companyId;
+
+  const contactSearchUrl = 'https://api.hubapi.com/crm/v3/objects/contacts/search';
+  const email = shopifyCustomer.email;
+
   const searchBody = {
-    filterGroups: [{ filters: [{ propertyName: 'email', operator: 'EQ', value: email }] }],
+    filterGroups: [{
+      filters: [{
+        propertyName: 'email',
+        operator: 'EQ',
+        value: email
+      }]
+    }],
     properties: ['email']
   };
 
-  const searchRes = await axios.post('https://api.hubapi.com/crm/v3/objects/contacts/search', searchBody, { headers: HUB_HEADERS });
-  if (searchRes.data.results.length > 0) return searchRes.data.results[0].id;
+  const contactSearchResp = await axios.post(contactSearchUrl, searchBody, { headers: hubheaders });
+  if (contactSearchResp.data.results.length > 0) {
+    contactId = contactSearchResp.data.results[0].id;
+  } else {
+    const contactCreateResp = await axios.post(
+      'https://api.hubapi.com/crm/v3/objects/contacts',
+      {
+        properties: {
+          email,
+          firstname: shopifyCustomer.first_name || '',
+          lastname: shopifyCustomer.last_name || ''
+        }
+      },
+      { headers: hubheaders }
+    );
+    contactId = contactCreateResp.data.id;
+  }
 
-  const createRes = await axios.post('https://api.hubapi.com/crm/v3/objects/contacts', {
-    properties: {
-      email,
-      firstname: customer.first_name || '',
-      lastname: customer.last_name || ''
+  const domain = email?.split('@')[1];
+  if (domain) {
+    const companySearchResp = await axios.post(
+      'https://api.hubapi.com/crm/v3/objects/companies/search',
+      {
+        filterGroups: [{
+          filters: [{
+            propertyName: 'domain',
+            operator: 'EQ',
+            value: domain
+          }]
+        }],
+        properties: ['name', 'domain']
+      },
+      { headers: hubheaders }
+    );
+    if (companySearchResp.data.results.length > 0) {
+      companyId = companySearchResp.data.results[0].id;
     }
-  }, { headers: HUB_HEADERS });
+  }
 
-  return createRes.data.id;
-}
-
-async function getOrCreateCourse(courseId) {
-  const searchBody = {
+  const courseSearchUrl = `https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}/search`;
+  const courseSearchBody = {
     filterGroups: [{
-      filters: [{ propertyName: 'hs_course_id', operator: 'EQ', value: courseId }]
+      filters: [{
+        propertyName: 'hs_course_id',
+        operator: 'EQ',
+        value: courseId
+      }]
     }],
     properties: ['hs_course_id']
   };
 
-  const searchRes = await axios.post(`https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}/search`, searchBody, { headers: HUB_HEADERS });
-  if (searchRes.data.results.length > 0) return searchRes.data.results[0].id;
+  const searchResp = await axios.post(courseSearchUrl, courseSearchBody, { headers: hubheaders });
+  let courseObjectId;
 
-  const createRes = await axios.post(`https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}`, {
-    properties: {
-      hs_course_id: courseId,
-      hs_course_name: courseId,
-      hs_pipeline_stage: REQUIRED_PIPELINE_STAGE
-    }
-  }, { headers: HUB_HEADERS });
+  if (searchResp.data.results.length > 0) {
+    courseObjectId = searchResp.data.results[0].id;
+  } else {
+    const createUrl = `https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}`;
+    const createResp = await axios.post(createUrl, {
+      properties: {
+        hs_course_id: courseId,
+        hs_course_name: courseId,
+        hs_pipeline_stage: '3e1a235d-1a64-4b7a-9ed5-7f0273ebd774',
+        hs_enrollment_capacity: 0,
+        course_date_and_time: new Date().toISOString(),
+        last_day_to_sign_up: new Date('2025-06-01').toISOString()
+      }
+    }, { headers: hubheaders });
 
-  return createRes.data.id;
-}
+    courseObjectId = createResp.data.id;
+  }
 
-async function getAssociationTypeId(from, to, labelContains) {
-  const res = await axios.get(`https://api.hubapi.com/crm/v4/associations/schema/${from}/${to}`, { headers: HUB_HEADERS });
-  const match = res.data.results.find(r => r.label?.toLowerCase().includes(labelContains.toLowerCase()));
-  return match?.associationTypeId || null;
-}
+  const contactAssocId = await getAssociationTypeId(COURSE_OBJECT_TYPE, 'contact', 'contact');
+  const companyAssocId = await getAssociationTypeId(COURSE_OBJECT_TYPE, 'company', 'company');
 
-async function associateObjects(fromType, fromId, toType, toId, label) {
-  const assocId = await getAssociationTypeId(fromType, toType, label);
-  if (!assocId) throw new Error(`Association ID not found for ${fromType} → ${toType}`);
-  const url = `https://api.hubapi.com/crm/v3/objects/${fromType}/${fromId}/associations/${toType}/${toId}/${assocId}`;
-  await axios.put(url, {}, { headers: HUB_HEADERS });
+  if (!contactAssocId) throw new Error('Missing Course → Contact association type ID');
+
+  const contactAssociateUrl = `https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}/${courseObjectId}/associations/contact/${contactId}/${contactAssocId}`;
+  console.log("🔗 Associating contact:", contactAssociateUrl);
+  await axios.put(contactAssociateUrl, {}, { headers: hubheaders });
+
+  if (companyId && companyAssocId) {
+    const companyAssociateUrl = `https://api.hubapi.com/crm/v3/objects/${COURSE_OBJECT_TYPE}/${courseObjectId}/associations/company/${companyId}/${companyAssocId}`;
+    console.log("🔗 Associating company:", companyAssociateUrl);
+    await axios.put(companyAssociateUrl, {}, { headers: hubheaders });
+  }
 }
 
 router.post('/webhook/orders/paid', async (req, res) => {
   try {
     const order = req.body;
-    const customer = order.customer;
 
-    if (!order || !customer || !order.line_items) {
-      return res.status(400).send("❌ Invalid order structure");
+    if (!order || !order.customer || !order.line_items || !order.id) {
+      console.error("❌ Missing essential order data.");
+      return res.status(400).send("Invalid order data.");
     }
 
-    const relevantItem = order.line_items.find(item => item.sku?.includes("both-days"));
-    if (!relevantItem) return res.status(200).send("No qualifying product found");
+    const orderId = order.id;
+    const orderTags = order.tags || "";
+    const customer = order.customer;
 
-    // Derive Course ID from product title
-    const parts = relevantItem.title.split(/[,\s-]+/);
-    const courseId = `${parts[0]}-${parts[1]}-${parts[3]}-${parts[4].replace(/\D/g, '')}-${parts[6].replace(/\D/g, '')}-${parts[7]}`;
+    for (const item of order.line_items) {
+      if (item.sku?.includes("both-days")) {
+        const courseId = parseCourseIdFromTitle(item.title);
 
-    const contactId = await getOrCreateContact(customer);
-    const courseObjectId = await getOrCreateCourse(courseId);
+        if (!courseId) {
+          console.error("❌ Could not parse course ID from:", item.title);
+          return res.status(400).send("Course ID parse error.");
+        }
 
-    await associateObjects(COURSE_OBJECT_TYPE, courseObjectId, 'contact', contactId, 'contact');
+        const newTag = ` ${courseId}`;
+        const updateUrl = `https://${SHOPIFY_STORE}/admin/api/2023-01/orders/${orderId}.json`;
 
-    // Update Shopify order tags
-    const shopifyUrl = `https://${SHOPIFY_STORE}/admin/api/2023-01/orders/${order.id}.json`;
-    await axios.put(shopifyUrl, {
-      order: { id: order.id, tags: courseId }
-    }, {
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN
+        await axios.put(updateUrl, {
+          order: { id: orderId, tags: newTag }
+        }, {
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN
+          }
+        });
+
+        await upsertCourseAndAssociateCustomer(courseId, customer);
+
+        const orderRef = db.collection('hubspot-classes').doc(`DC-${orderId}`);
+        const orderDoc = await orderRef.get();
+        if (!orderDoc.exists) {
+          await orderRef.set({ orderId, customerId: customer.id, tags: newTag });
+        } else {
+          await orderRef.set({ tags: newTag }, { merge: true });
+        }
+
+        return res.status(200).send("✅ Order processed.");
       }
-    });
+    }
 
-    // Save to Firestore
-    const ref = db.collection('hubspot-classes').doc(`DC-${order.id}`);
-    await ref.set({ customerId: customer.id, orderId: order.id, tags: courseId }, { merge: true });
-
-    res.status(200).send("✅ Course created and associated successfully.");
-  } catch (err) {
-    console.error("❌ Error:", {
-      message: err?.response?.data?.message || err.message,
-      details: err?.response?.data || err
+    res.status(200).send("No matching products.");
+  } catch (error) {
+    console.error("❌ HubSpot Integration Error:", {
+      message: error?.response?.data?.message,
+      context: error?.response?.data?.context,
+      status: error?.response?.status,
+      url: error?.config?.url
     });
-    res.status(500).send("Internal server error.");
+    res.status(500).send("Server error.");
   }
 });
 
