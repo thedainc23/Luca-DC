@@ -173,4 +173,100 @@ router.post('/toggle/waive-signature', async (req, res) => {
     }
 });
 
+
+// POST /webhooks/order-paid
+router.post('/webhooks/order-paid', async (req, res) => {
+    try {
+        const order = req.body;
+
+        if (!order || !order.customer || !order.id) {
+            return res.status(400).json({ message: 'Invalid order payload' });
+        }
+
+        const customerId = order.customer.id;
+        const orderId = order.id;
+
+        let waiveSignature = false;
+
+        // 1. Check Firestore
+        const customerRef = db.collection('customers').doc(`DC-${customerId}`);
+        const customerDoc = await customerRef.get();
+        if (customerDoc.exists && customerDoc.data().waive_signature === true) {
+            waiveSignature = true;
+        }
+
+        // 2. If not in Firestore, check Shopify tags
+        if (!waiveSignature) {
+            const shopifyCustomerResponse = await fetch(`https://${SHOPIFY_STORE}/admin/api/2023-10/customers/${customerId}.json`, {
+                method: 'GET',
+                headers: {
+                    'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!shopifyCustomerResponse.ok) {
+                throw new Error('Failed to fetch customer from Shopify');
+            }
+
+            const customerData = await shopifyCustomerResponse.json();
+            const tags = customerData.customer.tags.split(',').map(tag => tag.trim());
+            if (tags.includes('waive_signature')) {
+                waiveSignature = true;
+            }
+        }
+
+        // 3. If waiveSignature is true, update the order note
+        if (waiveSignature) {
+            // First, fetch the existing order to preserve the current note
+            const orderDetailsResponse = await fetch(`https://${SHOPIFY_STORE}/admin/api/2023-10/orders/${orderId}.json`, {
+                method: 'GET',
+                headers: {
+                    'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!orderDetailsResponse.ok) {
+                throw new Error('Failed to fetch order details from Shopify');
+            }
+
+            const orderData = await orderDetailsResponse.json();
+            const existingNote = orderData.order.note || '';
+
+            // Avoid duplicating the tag
+            const updatedNote = existingNote.includes('Waive_Signature')
+                ? existingNote
+                : `${existingNote}${existingNote ? ' | ' : ''}Waive_Signature`;
+
+            const updateOrderResponse = await fetch(`https://${SHOPIFY_STORE}/admin/api/2023-10/orders/${orderId}.json`, {
+                method: 'PUT',
+                headers: {
+                    'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    order: {
+                        id: orderId,
+                        note: updatedNote
+                    }
+                })
+            });
+
+            if (!updateOrderResponse.ok) {
+                throw new Error('Failed to update order with Waive_Signature note');
+            }
+
+            console.log(`Order ${orderId} updated with Waive_Signature note.`);
+        }
+
+
+        res.status(200).json({ message: 'Order processed successfully' });
+    } catch (error) {
+        console.error('Error handling order-paid webhook:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+
 module.exports = router;
