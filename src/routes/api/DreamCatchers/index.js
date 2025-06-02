@@ -245,4 +245,30 @@ router.post('/storeClient', async (req, res) => {
     }
 });
 
+
+
+router.get('/qr', async (req, res) => {
+    const text = req.query.text || 'https://dreamcatchers.com';
+  
+    try {
+      const qrDataUrl = await QRCode.toDataURL(text);
+  
+      // Send a simple HTML page with the QR code image
+      res.send(`
+        <html>
+          <body style="font-family: sans-serif; text-align: center; margin-top: 50px;">
+            <h2>QR Code for: ${text}</h2>
+            <img src="${qrDataUrl}" alt="QR Code" />
+          </body>
+        </html>
+      `);
+    } catch (err) {
+      console.error('QR Code generation error:', err);
+      res.status(500).send('Failed to generate QR code.');
+    }
+});
+  
+
+
+
 module.exports = router;
