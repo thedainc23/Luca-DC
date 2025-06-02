@@ -2,6 +2,7 @@ const express = require('express');
 const db = require('../../../config/db'); // Firebase DB setup
 const router = express.Router();
 const axios = require('axios');  // HTTP client for API requests
+const QRCode = require('qrcode');
 
 // Shopify Store and Access Token
 const SHOPIFY_STORE = 'www.dreamcatchers.com';
