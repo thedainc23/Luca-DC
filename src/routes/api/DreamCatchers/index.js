@@ -285,7 +285,9 @@ router.get('/qr', async (req, res) => {
 
 router.post('/upsell', async (req, res) => {
     try {
-      const { customerId, lineItems } = req.body;
+        const customerId = req.body.customer?.id;
+        const lineItems = req.body.order?.lineItems;
+        
   
       if (!customerId || !Array.isArray(lineItems)) {
         console.log('[!] Missing customerId or lineItems');
