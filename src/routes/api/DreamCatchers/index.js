@@ -283,7 +283,7 @@ router.get('/qr', async (req, res) => {
 
 
 
-router.post('/upsell', async (req, res) => {
+router.get('/upsell', async (req, res) => {
     try {
       const { customerId, lineItems } = req.body;
   
