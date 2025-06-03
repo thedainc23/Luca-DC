@@ -296,7 +296,7 @@ router.post('/upsell', async (req, res) => {
       const customer = customerResp.data.customer;
       const tags = customer.tags || '';
   
-      const applyUpcharge = tags.includes('nc_stylist');
+      const applyUpcharge = tags.includes(' nc_stylist');
   
       // 2. Standard line items (preserve inventory tracking)
       const adjustedLineItems = lineItems.map(item => ({
