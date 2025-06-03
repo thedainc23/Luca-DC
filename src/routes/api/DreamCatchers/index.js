@@ -288,23 +288,30 @@ router.post('/upsell', async (req, res) => {
       const { customerId, lineItems } = req.body;
   
       if (!customerId || !Array.isArray(lineItems)) {
+        console.log('[!] Missing customerId or lineItems');
         return res.status(400).json({ error: 'Missing customerId or lineItems' });
       }
+  
+      console.log(`[✓] Received request for customerId: ${customerId}`);
+      console.log(`[✓] Line Items:`, lineItems);
   
       // 1. Fetch customer to check tags
       const customerResp = await shopifyApi.get(`/customers/${customerId}.json`);
       const customer = customerResp.data.customer;
       const tags = customer.tags || '';
   
-      const applyUpcharge = tags.includes('nc_stylist');
+      console.log(`[✓] Customer Tags: ${tags}`);
   
-      // 2. Standard line items (preserve inventory tracking)
+      const applyUpcharge = tags.includes('nc_stylist');
+      console.log(`[✓] Apply 10% Upcharge: ${applyUpcharge}`);
+  
+      // 2. Base line items (keep inventory tracking)
       const adjustedLineItems = lineItems.map(item => ({
         variant_id: item.variant_id,
         quantity: item.quantity,
       }));
   
-      // 3. Add upcharge line item if applicable
+      // 3. Add surcharge line if applicable
       if (applyUpcharge) {
         const subtotal = lineItems.reduce((sum, item) => {
           const price = parseFloat(item.price || '0');
@@ -313,12 +320,17 @@ router.post('/upsell', async (req, res) => {
         }, 0);
   
         const upchargeAmount = (subtotal * 0.1).toFixed(2);
+        console.log(`[+] Calculated 10% Upcharge: $${upchargeAmount}`);
   
         adjustedLineItems.push({
           title: 'NC Stylist 10% Upcharge',
           price: upchargeAmount,
           quantity: 1,
         });
+  
+        console.log(`[+] Final Line Items with Upcharge:`, adjustedLineItems);
+      } else {
+        console.log(`[✓] No upcharge applied. Final Line Items:`, adjustedLineItems);
       }
   
       // 4. Create draft order
@@ -333,11 +345,12 @@ router.post('/upsell', async (req, res) => {
       });
   
       const invoiceUrl = draftOrderResp.data.draft_order.invoice_url;
+      console.log(`[✓] Draft order created. Checkout URL: ${invoiceUrl}`);
   
       return res.json({ checkout_url: invoiceUrl });
   
     } catch (error) {
-      console.error('Error in /upsell:', error.response?.data || error.message);
+      console.error('🔥 Error in /upsell:', error.response?.data || error.message);
       return res.status(500).json({ error: 'Failed to create upsell order.' });
     }
   });
