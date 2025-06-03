@@ -285,7 +285,7 @@ router.get('/qr', async (req, res) => {
 
 router.post('/upsell', async (req, res) => {
     try {
-      const { email, line_items } = req.body;
+      const { email, line_items, tags = [] } = req.body;
   
       if (!email || !Array.isArray(line_items) || line_items.length === 0) {
         console.log('[!] Missing email or line_items');
@@ -300,16 +300,17 @@ router.post('/upsell', async (req, res) => {
         return res.status(404).json({ error: 'Customer not found' });
       }
   
-      const applyUpcharge = customer.tags?.includes('nc_stylist');
+      // 2. Check tag from API or fallback to customer tags
+      const tagList = [...(customer.tags || []), ...(tags || [])].map(t => t.toLowerCase());
+      const applyUpcharge = tagList.includes('nc_stylist');
       console.log(`[✓] Found customer: ${customer.id} (${customer.email}), Apply Upcharge: ${applyUpcharge}`);
   
-      // 2. Rebuild line items (preserve variants and quantities)
+      // 3. Build line items
       const adjustedLineItems = line_items.map(item => ({
         variant_id: item.variant_id,
         quantity: item.quantity,
       }));
   
-      // 3. Add surcharge if needed
       if (applyUpcharge) {
         const subtotal = line_items.reduce((sum, item) => {
           const price = parseFloat(item.price || '0');
@@ -317,12 +318,13 @@ router.post('/upsell', async (req, res) => {
           return sum + price * qty;
         }, 0);
   
-        const upchargeAmount = (subtotal * 0.1).toFixed(2);
+        const upchargeAmount = +(subtotal * 0.1).toFixed(2); // cast to number
   
         adjustedLineItems.push({
           title: 'NC Stylist 10% Upcharge',
           price: upchargeAmount,
           quantity: 1,
+          taxable: true,
         });
       }
   
@@ -343,6 +345,7 @@ router.post('/upsell', async (req, res) => {
       return res.status(500).json({ error: 'Failed to create upsell order.' });
     }
   });
+  
     
 
 
