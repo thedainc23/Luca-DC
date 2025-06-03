@@ -298,19 +298,30 @@ router.post('/upsell', async (req, res) => {
   
       const applyUpcharge = tags.includes('nc_stylist');
   
-      // 2. Adjust prices if needed
-      const adjustedLineItems = lineItems.map(item => {
-        const basePrice = parseFloat(item.price); // Should be a decimal string like "100.00"
-        const newPrice = applyUpcharge ? (basePrice * 1.1).toFixed(2) : basePrice.toFixed(2);
+      // 2. Standard line items (preserve inventory tracking)
+      const adjustedLineItems = lineItems.map(item => ({
+        variant_id: item.variant_id,
+        quantity: item.quantity,
+      }));
   
-        return {
-          variant_id: item.variant_id,
-          quantity: item.quantity,
-          price: newPrice,
-        };
-      });
+      // 3. Add upcharge line item if applicable
+      if (applyUpcharge) {
+        const subtotal = lineItems.reduce((sum, item) => {
+          const price = parseFloat(item.price || '0');
+          const qty = parseInt(item.quantity || 1);
+          return sum + price * qty;
+        }, 0);
   
-      // 3. Create draft order
+        const upchargeAmount = (subtotal * 0.1).toFixed(2);
+  
+        adjustedLineItems.push({
+          title: 'NC Stylist 10% Upcharge',
+          price: upchargeAmount,
+          quantity: 1,
+        });
+      }
+  
+      // 4. Create draft order
       const draftOrderResp = await shopifyApi.post('/draft_orders.json', {
         draft_order: {
           line_items: adjustedLineItems,
