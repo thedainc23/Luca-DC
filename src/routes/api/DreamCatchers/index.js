@@ -10,6 +10,18 @@ const SHOPIFY_ACCESS_TOKEN = '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';
 const HAIR_COLLECTION_ID = 394059120886; // Replace with the specific collection ID you want to fetch
 // Shopify API URL to fetch products from the specific collection
 
+
+const shopifyApi = axios.create({
+    baseURL: `https://${SHOPIFY_STORE}/admin/api/2024-01`,
+    headers: {
+      'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
+      'Content-Type': 'application/json',
+    },
+});
+
+
+
+
 router.post('/sync-shopify', async (req, res) => {
     const shopifyUrl = `https://${SHOPIFY_STORE}/admin/api/2023-10/collections/${HAIR_COLLECTION_ID}/products.json`;
 
@@ -268,6 +280,57 @@ router.get('/qr', async (req, res) => {
       res.status(500).send('Failed to generate QR code.');
     }
 });
+
+
+
+router.post('/upsell', async (req, res) => {
+    try {
+      const { customerId, lineItems } = req.body;
+  
+      if (!customerId || !Array.isArray(lineItems)) {
+        return res.status(400).json({ error: 'Missing customerId or lineItems' });
+      }
+  
+      // 1. Fetch customer to check tags
+      const customerResp = await shopifyApi.get(`/customers/${customerId}.json`);
+      const customer = customerResp.data.customer;
+      const tags = customer.tags || '';
+  
+      const applyUpcharge = tags.includes('nc_stylist');
+  
+      // 2. Adjust prices if needed
+      const adjustedLineItems = lineItems.map(item => {
+        const basePrice = parseFloat(item.price); // Should be a decimal string like "100.00"
+        const newPrice = applyUpcharge ? (basePrice * 1.1).toFixed(2) : basePrice.toFixed(2);
+  
+        return {
+          variant_id: item.variant_id,
+          quantity: item.quantity,
+          price: newPrice,
+        };
+      });
+  
+      // 3. Create draft order
+      const draftOrderResp = await shopifyApi.post('/draft_orders.json', {
+        draft_order: {
+          line_items: adjustedLineItems,
+          customer: {
+            id: customerId,
+          },
+          use_customer_default_address: true,
+        },
+      });
+  
+      const invoiceUrl = draftOrderResp.data.draft_order.invoice_url;
+  
+      return res.json({ checkout_url: invoiceUrl });
+  
+    } catch (error) {
+      console.error('Error in /upsell:', error.response?.data || error.message);
+      return res.status(500).json({ error: 'Failed to create upsell order.' });
+    }
+  });
+  
   
 
 
