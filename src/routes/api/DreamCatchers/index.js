@@ -287,7 +287,7 @@ router.post('/upsell', async (req, res) => {
     console.log(req.body)
     try {
         const customerId = req.body.id;
-        const lineItems = req.body.order?.line_items;
+        const lineItems = req.body?.line_items;
         
   
       if (!customerId || !Array.isArray(lineItems)) {
