@@ -284,72 +284,58 @@ router.get('/qr', async (req, res) => {
 
 
 router.post('/upsell', async (req, res) => {
-    console.log(req.body)
     try {
-        const customerId = req.body.id;
-        const lineItems = req.body?.line_items;
-        
+      const { email, line_items } = req.body;
   
-      if (!customerId || !Array.isArray(lineItems)) {
-        console.log('[!] Missing customerId or lineItems');
-        return res.status(400).json({ error: 'Missing customerId or lineItems' });
+      if (!email || !Array.isArray(line_items) || line_items.length === 0) {
+        console.log('[!] Missing email or line_items');
+        return res.status(400).json({ error: 'Missing email or line_items' });
       }
   
-      console.log(`[✓] Received request for customerId: ${customerId}`);
-      console.log(`[✓] Line Items:`, lineItems);
+      // 1. Fetch customer by email
+      const customerSearchResp = await shopifyApi.get(`/customers/search.json?query=email:${email}`);
+      const customer = customerSearchResp.data.customers[0];
   
-      // 1. Fetch customer to check tags
-      const customerResp = await shopifyApi.get(`/customers/${customerId}.json`);
-      const customer = customerResp.data.customer;
-      const tags = customer.tags || '';
+      if (!customer) {
+        return res.status(404).json({ error: 'Customer not found' });
+      }
   
-      console.log(`[✓] Customer Tags: ${tags}`);
+      const applyUpcharge = customer.tags?.includes('nc_stylist');
+      console.log(`[✓] Found customer: ${customer.id} (${customer.email}), Apply Upcharge: ${applyUpcharge}`);
   
-      const applyUpcharge = tags.includes('nc_stylist');
-      console.log(`[✓] Apply 10% Upcharge: ${applyUpcharge}`);
-  
-      // 2. Base line items (keep inventory tracking)
-      const adjustedLineItems = lineItems.map(item => ({
+      // 2. Rebuild line items (preserve variants and quantities)
+      const adjustedLineItems = line_items.map(item => ({
         variant_id: item.variant_id,
         quantity: item.quantity,
       }));
   
-      // 3. Add surcharge line if applicable
+      // 3. Add surcharge if needed
       if (applyUpcharge) {
-        const subtotal = lineItems.reduce((sum, item) => {
+        const subtotal = line_items.reduce((sum, item) => {
           const price = parseFloat(item.price || '0');
           const qty = parseInt(item.quantity || 1);
           return sum + price * qty;
         }, 0);
   
         const upchargeAmount = (subtotal * 0.1).toFixed(2);
-        console.log(`[+] Calculated 10% Upcharge: $${upchargeAmount}`);
   
         adjustedLineItems.push({
           title: 'NC Stylist 10% Upcharge',
           price: upchargeAmount,
           quantity: 1,
         });
-  
-        console.log(`[+] Final Line Items with Upcharge:`, adjustedLineItems);
-      } else {
-        console.log(`[✓] No upcharge applied. Final Line Items:`, adjustedLineItems);
       }
   
       // 4. Create draft order
-      const draftOrderResp = await shopifyApi.post('/draft_orders.json', {
+      const draftResp = await shopifyApi.post('/draft_orders.json', {
         draft_order: {
           line_items: adjustedLineItems,
-          customer: {
-            id: customerId,
-          },
+          customer: { id: customer.id },
           use_customer_default_address: true,
         },
       });
   
-      const invoiceUrl = draftOrderResp.data.draft_order.invoice_url;
-      console.log(`[✓] Draft order created. Checkout URL: ${invoiceUrl}`);
-  
+      const invoiceUrl = draftResp.data.draft_order.invoice_url;
       return res.json({ checkout_url: invoiceUrl });
   
     } catch (error) {
@@ -357,8 +343,7 @@ router.post('/upsell', async (req, res) => {
       return res.status(500).json({ error: 'Failed to create upsell order.' });
     }
   });
-  
-  
+    
 
 
 
