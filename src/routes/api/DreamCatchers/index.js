@@ -19,8 +19,26 @@ const shopifyApi = axios.create({
     },
 });
 
+// 🔒 Hardcoded Zoom secret token
+const ZOOM_SECRET_TOKEN = 'EL1bVBTlQwijoPfQRBrp_g';
+
 router.post('/zoom', async (req, res) => {
   try {
+    // 🔒 Step 1: Check secret token
+    const authHeader = req.headers.authorization;
+    if (authHeader !== ZOOM_SECRET_TOKEN) {
+      console.log('❌ Invalid Zoom secret token');
+      return res.status(401).send('Unauthorized');
+    }
+
+    // 🔐 Step 2: Handle Zoom URL validation
+    const { plainToken, encryptedToken } = req.body;
+    if (plainToken && encryptedToken) {
+      console.log('🔐 Responding to Zoom validation');
+      return res.status(200).json({ plainToken, encryptedToken });
+    }
+
+    // 🎯 Step 3: Handle meeting/webinar start
     const eventType = req.body.event;
     const payload = req.body.payload?.object;
 
@@ -30,21 +48,23 @@ router.post('/zoom', async (req, res) => {
 
       console.log(`✅ Zoom event received: ${eventType} | ${topic}`);
 
-      // // Trigger Klaviyo event
-      // const klaviyoResponse = await axios.post('https://a.klaviyo.com/api/track', {
-      //   token: 'YOUR_KLAVIYO_PUBLIC_API_KEY',
-      //   event: 'QA Started',
-      //   customer_properties: {
-      //     $email: hostEmail
-      //   },
-      //   properties: {
-      //     topic,
-      //     zoom_meeting_id: payload.id,
-      //     start_time: payload.start_time,
-      //   }
-      // });
+      // 🔥 Uncomment and configure when ready to send to Klaviyo
+      /*
+      const klaviyoResponse = await axios.post('https://a.klaviyo.com/api/track', {
+        token: 'YOUR_KLAVIYO_PUBLIC_API_KEY',
+        event: 'QA Started',
+        customer_properties: {
+          $email: hostEmail
+        },
+        properties: {
+          topic,
+          zoom_meeting_id: payload.id,
+          start_time: payload.start_time,
+        }
+      });
 
       console.log('✅ Klaviyo event sent:', klaviyoResponse.data);
+      */
     }
 
     res.status(200).send('OK');
