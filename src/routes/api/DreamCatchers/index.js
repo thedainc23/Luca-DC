@@ -24,42 +24,40 @@ const ZOOM_SECRET_TOKEN = 'EL1bVBTlQwijoPfQRBrp_g';
 
 router.post('/zoom', async (req, res) => {
   try {
-    // 🔒 Step 1: Check secret token
+    const { plainToken, encryptedToken, event, payload } = req.body;
+
+    // 🔐 Step 1: Handle Zoom URL validation FIRST
+    if (plainToken && encryptedToken) {
+      console.log('🔐 Responding to Zoom validation');
+      return res.status(200).json({ plainToken, encryptedToken });
+    }
+
+    // 🔒 Step 2: Auth check only after validation
     const authHeader = req.headers.authorization;
     if (authHeader !== ZOOM_SECRET_TOKEN) {
       console.log('❌ Invalid Zoom secret token');
       return res.status(401).send('Unauthorized');
     }
 
-    // 🔐 Step 2: Handle Zoom URL validation
-    const { plainToken, encryptedToken } = req.body;
-    if (plainToken && encryptedToken) {
-      console.log('🔐 Responding to Zoom validation');
-      return res.status(200).json({ plainToken, encryptedToken });
-    }
-
-    // 🎯 Step 3: Handle meeting/webinar start
-    const eventType = req.body.event;
-    const payload = req.body.payload?.object;
+    // 🎯 Step 3: Handle real Zoom events
+    const eventType = event;
+    const zoomData = payload?.object;
 
     if (eventType === 'meeting.started' || eventType === 'webinar.started') {
-      const topic = payload.topic;
-      const hostEmail = payload.host_email;
+      const topic = zoomData.topic;
+      const hostEmail = zoomData.host_email;
 
       console.log(`✅ Zoom event received: ${eventType} | ${topic}`);
 
-      // 🔥 Uncomment and configure when ready to send to Klaviyo
       /*
       const klaviyoResponse = await axios.post('https://a.klaviyo.com/api/track', {
         token: 'YOUR_KLAVIYO_PUBLIC_API_KEY',
         event: 'QA Started',
-        customer_properties: {
-          $email: hostEmail
-        },
+        customer_properties: { $email: hostEmail },
         properties: {
           topic,
-          zoom_meeting_id: payload.id,
-          start_time: payload.start_time,
+          zoom_meeting_id: zoomData.id,
+          start_time: zoomData.start_time,
         }
       });
 
