@@ -24,18 +24,28 @@ const ZOOM_SECRET_TOKEN = 'EL1bVBTlQwijoPfQRBrp_g';
 
 router.post('/zoom', async (req, res) => {
   try {
-    const { plainToken, encryptedToken, event, payload } = req.body;
+    const { event, payload } = req.body;
 
-    // 🔐 Step 1: Handle Zoom URL validation FIRST
-    if (plainToken && encryptedToken) {
+    // 🔐 Step 1: Handle Zoom URL validation (Challenge-Response)
+    if (event === 'endpoint.url_validation') {
+      const plainToken = payload.plainToken;
+      const hashForValidate = crypto.createHmac('sha256', ZOOM_SECRET_TOKEN)
+        .update(plainToken)
+        .digest('hex');
+
       console.log('🔐 Responding to Zoom validation');
-      return res.status(200).json({ plainToken, encryptedToken });
+      return res.status(200).json({ plainToken, encryptedToken: hashForValidate });
     }
 
-    // 🔒 Step 2: Auth check only after validation
-    const authHeader = req.headers.authorization;
-    if (authHeader !== ZOOM_SECRET_TOKEN) {
-      console.log('❌ Invalid Zoom secret token');
+    // 🔒 Step 2: Verify the webhook request using the x-zm-signature header
+    const message = `v0:${req.headers['x-zm-request-timestamp']}:${JSON.stringify(req.body)}`;
+    const hashForVerify = crypto.createHmac('sha256', ZOOM_SECRET_TOKEN)
+      .update(message)
+      .digest('hex');
+    const signature = `v0=${hashForVerify}`;
+
+    if (req.headers['x-zm-signature'] !== signature) {
+      console.log('❌ Invalid Zoom signature');
       return res.status(401).send('Unauthorized');
     }
 
