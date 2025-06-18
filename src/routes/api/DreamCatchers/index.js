@@ -19,7 +19,40 @@ const shopifyApi = axios.create({
     },
 });
 
+router.post('/zoom', async (req, res) => {
+  try {
+    const eventType = req.body.event;
+    const payload = req.body.payload?.object;
 
+    if (eventType === 'meeting.started' || eventType === 'webinar.started') {
+      const topic = payload.topic;
+      const hostEmail = payload.host_email;
+
+      console.log(`✅ Zoom event received: ${eventType} | ${topic}`);
+
+      // // Trigger Klaviyo event
+      // const klaviyoResponse = await axios.post('https://a.klaviyo.com/api/track', {
+      //   token: 'YOUR_KLAVIYO_PUBLIC_API_KEY',
+      //   event: 'QA Started',
+      //   customer_properties: {
+      //     $email: hostEmail
+      //   },
+      //   properties: {
+      //     topic,
+      //     zoom_meeting_id: payload.id,
+      //     start_time: payload.start_time,
+      //   }
+      // });
+
+      console.log('✅ Klaviyo event sent:', klaviyoResponse.data);
+    }
+
+    res.status(200).send('OK');
+  } catch (err) {
+    console.error('❌ Error handling Zoom webhook:', err);
+    res.status(500).send('Error');
+  }
+});
 
 
 router.post('/sync-shopify', async (req, res) => {
