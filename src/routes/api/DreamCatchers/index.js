@@ -320,63 +320,73 @@ router.post('/storeClient', async (req, res) => {
 });
 
 
-
 router.post('/store-answer', async (req, res) => {
-  const { answer, customerId, email } = req.body;
+  const { answer, stylistName, customerId, email } = req.body;
 
   if (!answer || !customerId || !email) {
-    return res.status(400).json({ error: 'Missing fields' });
+    return res.status(400).json({ error: 'Missing required fields' });
   }
 
   try {
-    // Save to Firestore
+    // 🔹 1. Save response to Firestore
     await db.collection('popup_answers').doc(customerId.toString()).set({
       answer,
+      stylistName: stylistName || null,
       customerId,
       email,
       timestamp: new Date()
     });
 
-    // Step 1: Get the customer to fetch current tags
+    // 🔹 2. Fetch existing customer info from Shopify
     const customerRes = await axios.get(
       `https://${SHOPIFY_STORE}/admin/api/2023-10/customers/${customerId}.json`,
       {
         headers: {
-          'X-Shopify-Access-Token': process.env.SHOPIFY_ADMIN_TOKEN,
+          'X-Shopify-Access-Token': SHOPIFY_TOKEN,
           'Content-Type': 'application/json'
         }
       }
     );
 
-    let existingTags = customerRes.data.customer.tags.split(',').map(tag => tag.trim());
+    const customer = customerRes.data.customer;
+    const existingTags = customer.tags
+      ? customer.tags.split(',').map(tag => tag.trim())
+      : [];
 
-    // Step 2: Add the new tag only if not present
+    // 🔹 3. Add 'popup_seen' if not already present
     if (!existingTags.includes('popup_seen')) {
       existingTags.push('popup_seen');
     }
 
-    // Step 3: Update customer with all tags
-    await axios.put(
+    // 🔹 4. Prepare customer update payload
+    const updatedCustomer = {
+      id: customerId,
+      tags: existingTags.join(', ')
+    };
+
+    // Optional: include name/email to avoid Shopify rejecting empty fields
+    if (customer.email) updatedCustomer.email = customer.email;
+    if (customer.first_name) updatedCustomer.first_name = customer.first_name;
+
+    // 🔹 5. Update customer tags in Shopify
+    const updateRes = await axios.put(
       `https://${SHOPIFY_STORE}/admin/api/2023-10/customers/${customerId}.json`,
-      {
-        customer: {
-          id: customerId,
-          tags: existingTags.join(', ')
-        }
-      },
+      { customer: updatedCustomer },
       {
         headers: {
-          'X-Shopify-Access-Token': process.env.SHOPIFY_ADMIN_TOKEN,
+          'X-Shopify-Access-Token': SHOPIFY_TOKEN,
           'Content-Type': 'application/json'
         }
       }
     );
 
+    // 🔹 6. Log updated tags for verification
+    console.log('✅ Updated tags:', updateRes.data.customer.tags);
 
-    res.json({ success: true });
+    return res.json({ success: true });
   } catch (error) {
-    console.error('Error saving popup answer:', error);
-    res.status(500).json({ error: 'Failed to save answer' });
+    console.error('❌ Error saving popup answer or tagging customer:', error.response?.data || error.message);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 });
 
