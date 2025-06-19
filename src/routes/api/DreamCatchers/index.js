@@ -321,6 +321,65 @@ router.post('/storeClient', async (req, res) => {
 
 
 
+router.post('/store-answer', async (req, res) => {
+  const { answer, customerId, email } = req.body;
+
+  if (!answer || !customerId || !email) {
+    return res.status(400).json({ error: 'Missing fields' });
+  }
+
+  try {
+    // Save to Firestore
+    await db.collection('popup_answers').doc(customerId.toString()).set({
+      answer,
+      customerId,
+      email,
+      timestamp: new Date()
+    });
+
+    // Step 1: Get the customer to fetch current tags
+    const customerRes = await axios.get(
+      `https://${SHOPIFY_STORE}/admin/api/2023-10/customers/${customerId}.json`,
+      {
+        headers: {
+          'X-Shopify-Access-Token': process.env.SHOPIFY_ADMIN_TOKEN,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    let existingTags = customerRes.data.customer.tags.split(',').map(tag => tag.trim());
+
+    // Step 2: Add the new tag only if not present
+    if (!existingTags.includes('popup_seen')) {
+      existingTags.push('popup_seen');
+    }
+
+    // Step 3: Update customer with all tags
+    await axios.put(
+      `https://${SHOPIFY_STORE}/admin/api/2023-10/customers/${customerId}.json`,
+      {
+        customer: {
+          id: customerId,
+          tags: existingTags.join(', ')
+        }
+      },
+      {
+        headers: {
+          'X-Shopify-Access-Token': process.env.SHOPIFY_ADMIN_TOKEN,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error saving popup answer:', error);
+    res.status(500).json({ error: 'Failed to save answer' });
+  }
+});
+
 router.get('/qr', async (req, res) => {
     const text = req.query.text || 'https://dreamcatchers.com';
   
