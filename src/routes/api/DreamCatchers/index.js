@@ -342,7 +342,7 @@ router.post('/store-answer', async (req, res) => {
       `https://${SHOPIFY_STORE}/admin/api/2023-10/customers/${customerId}.json`,
       {
         headers: {
-          'X-Shopify-Access-Token': SHOPIFY_TOKEN,
+          'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
           'Content-Type': 'application/json'
         }
       }
@@ -374,7 +374,7 @@ router.post('/store-answer', async (req, res) => {
       { customer: updatedCustomer },
       {
         headers: {
-          'X-Shopify-Access-Token': SHOPIFY_TOKEN,
+          'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
           'Content-Type': 'application/json'
         }
       }
