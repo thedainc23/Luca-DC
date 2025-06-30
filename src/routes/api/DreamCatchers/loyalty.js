@@ -457,7 +457,7 @@ router.post('/check-tier', async (req, res) => {
       const customerId = order.customer.id;
   
       // Get customer info (includes total_spent and tags)
-      const customerResponse = await axios.get(`https://${SHOP}/admin/api/2024-01/customers/${customerId}.json`, {
+      const customerResponse = await axios.get(`https://${SHOPIFY_STORE}/admin/api/2024-01/customers/${customerId}.json`, {
         headers: {
           'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
           'Content-Type': 'application/json'
@@ -479,7 +479,7 @@ router.post('/check-tier', async (req, res) => {
       const updatedTags = Array.from(new Set([...currentTags, qualifyingTier.name])).join(', ');
   
       // Update customer tags
-      await axios.put(`https://${SHOP}/admin/api/2024-01/customers/${customerId}.json`, {
+      await axios.put(`https://${SHOPIFY_STORE}/admin/api/2024-01/customers/${customerId}.json`, {
         customer: {
           id: customerId,
           tags: updatedTags
