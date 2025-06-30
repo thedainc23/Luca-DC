@@ -434,7 +434,7 @@ router.get('/loyalty-customers', async (req, res) => {
 
 // Define your tier levels
 const TIERS = [
-    { name: "speacialist", min: 5000 },
+    { name: "specialist", min: 5000 },
     { name: "pro", min: 10000 },
     { name: "elite", min: 25000 },
     { name: "master", min: 50000 },
