@@ -445,8 +445,7 @@ const TIERS = [
 
 
 
-  // POST /webhooks/order-paid
-router.post('/check-tier', async (req, res) => {
+  router.post('/check-tier', async (req, res) => {
     try {
       const order = req.body;
   
@@ -456,7 +455,7 @@ router.post('/check-tier', async (req, res) => {
   
       const customerId = order.customer.id;
   
-      // Get customer info (includes total_spent and tags)
+      // Fetch customer data
       const customerResponse = await axios.get(`https://${SHOPIFY_STORE}/admin/api/2024-01/customers/${customerId}.json`, {
         headers: {
           'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
@@ -468,17 +467,16 @@ router.post('/check-tier', async (req, res) => {
       const totalSpent = parseFloat(customer.total_spent);
       const currentTags = customer.tags ? customer.tags.split(',').map(t => t.trim()) : [];
   
-      // Find the highest tier the customer qualifies for
+      // Determine appropriate tier
       const qualifyingTier = TIERS.slice().reverse().find(tier => totalSpent >= tier.min);
   
       if (!qualifyingTier || currentTags.includes(qualifyingTier.name)) {
         return res.status(200).send('No tag update needed');
       }
   
-      // Add new tier tag without removing existing ones
+      // Update tags
       const updatedTags = Array.from(new Set([...currentTags, qualifyingTier.name])).join(', ');
   
-      // Update customer tags
       await axios.put(`https://${SHOPIFY_STORE}/admin/api/2024-01/customers/${customerId}.json`, {
         customer: {
           id: customerId,
@@ -491,11 +489,24 @@ router.post('/check-tier', async (req, res) => {
         }
       });
   
+      // Log change to Firestore
+      await db.collection('tier_tag_logs').add({
+        customerId: customerId,
+        email: customer.email,
+        totalSpent: totalSpent,
+        newTag: qualifyingTier.name,
+        previousTags: currentTags,
+        timestamp: new Date().toISOString(),
+        orderId: order.id,
+        orderName: order.name
+      });
+  
       res.status(200).send(`Customer tagged with: ${qualifyingTier.name}`);
     } catch (error) {
       console.error('Error tagging customer:', error.response?.data || error.message);
       res.status(500).send('Internal server error');
     }
-});
+  });
+  
 
 module.exports = router;
