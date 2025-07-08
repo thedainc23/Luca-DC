@@ -400,8 +400,8 @@ router.get('/qr', async (req, res) => {
       res.send(`
         <html>
           <body style="font-family: sans-serif; text-align: center; margin-top: 50px;">
-            <h2>QR Code for: ${text}</h2>
-            <img src="${qrDataUrl}" alt="QR Code" />
+            <h2>Scan The QR Code</h2>
+            <img style='max-width: 100%;' src="${qrDataUrl}" alt="QR Code" />
           </body>
         </html>
       `);
