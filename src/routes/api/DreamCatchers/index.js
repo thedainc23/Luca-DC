@@ -400,7 +400,9 @@ router.get('/qr', async (req, res) => {
       res.send(`
         <html>
           <body style="font-family: sans-serif; text-align: center; margin-top: 50px;">
+            <div>
             <h2>Scan The QR Code</h2>
+            </div>
             <img style='max-width: 100%;' src="${qrDataUrl}" alt="QR Code" />
           </body>
         </html>
@@ -409,6 +411,31 @@ router.get('/qr', async (req, res) => {
       console.error('QR Code generation error:', err);
       res.status(500).send('Failed to generate QR code.');
     }
+});
+
+
+
+router.get('/nc-qr', async (req, res) => {
+  const text = req.query.text || 'https://dreamcatchers.com/pages/join-the-dreamteam';
+
+  try {
+    const qrDataUrl = await QRCode.toDataURL(text);
+
+    // Send a simple HTML page with the QR code image
+    res.send(`
+      <html>
+        <body style="font-family: sans-serif; text-align: center; margin-top: 50px;">
+          <div>
+          <h2>Scan The QR Code</h2>
+          </div>
+          <img style='max-width: 100%;' src="${qrDataUrl}" alt="QR Code" />
+        </body>
+      </html>
+    `);
+  } catch (err) {
+    console.error('QR Code generation error:', err);
+    res.status(500).send('Failed to generate QR code.');
+  }
 });
 
 
