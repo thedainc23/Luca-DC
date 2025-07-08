@@ -391,7 +391,7 @@ router.post('/store-answer', async (req, res) => {
 });
 
 router.get('/qr', async (req, res) => {
-    const text = req.query.text || 'https://dreamcatchers.com';
+    const text = req.query.text || 'https://dreamcatchers.com/pages/recommendations';
   
     try {
       const qrDataUrl = await QRCode.toDataURL(text);
