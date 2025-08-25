@@ -355,35 +355,57 @@ async function getAllCustomers(batchSize = 500) {
     return customers;
 }
 
-// Get Customers from Firestore
-router.get('/all-customers', async (req, res) => {
-    try {
-        const limit = parseInt(req.query.limit) || 50;
-        const last = req.query.last; // Pass the last doc's ID
+router.get("/all-customers", async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 250;
+    const lastId = req.query.last;
 
-        let query = db.collection('customers').orderBy('createdAt').limit(limit);
+    let query = db.collection("customers").orderBy("__name__").limit(limit);
 
-        if (last) {
-            const lastDoc = await db.collection('customers').doc(last).get();
-            query = query.startAfter(lastDoc);
-        }
-
-        const snapshot = await query.get();
-        const customers = [];
-
-        snapshot.forEach(doc => {
-            customers.push({
-                id: doc.id,
-                ...doc.data()
-            });
-        });
-
-        res.status(200).json(customers);
-    } catch (error) {
-        console.error('Error fetching customers:', error);
-        res.status(500).json({ error: 'Internal server error' });
+    if (lastId) {
+      const lastDocSnap = await db.collection("customers").doc(lastId).get();
+      if (lastDocSnap.exists) {
+        query = query.startAfter(lastDocSnap.id);
+      }
     }
+
+    const snapshot = await query.get();
+    if (snapshot.empty) return res.status(200).json([]);
+
+    const customers = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        customerId: data.customerId || "",
+        firstName: data.firstName || "",
+        lastName: data.lastName || "",
+        email: data.email || "",
+        phone: data.phone || "",
+        totalSpent: data.totalSpent || 0,
+        ordersCount: data.ordersCount || 0,
+        acceptsMarketing: data.acceptsMarketing || false,
+        tags: data.tags || [],
+        defaultAddress: data.defaultAddress || {},
+        addresses: data.addresses || [],
+        lastOrder: data.lastOrder || {},
+        loyalty: data.loyalty || {},
+        createdAt: data.createdAt || null,
+        updatedAt: data.updatedAt || null,
+      };
+    });
+
+    res.status(200).json(customers);
+  } catch (error) {
+    console.error("❌ Error fetching customers:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
+
+
+
+
+
+
 
 
 router.get('/loyalty-customers', async (req, res) => {
