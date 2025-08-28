@@ -433,16 +433,19 @@ router.get('/loyalty-customers', async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 });
-router.post("/loyalty/update-stamps", async (req, res) => {
-  console.log("Request Body:", req.body); // Debug
-  try {
-    const { customerId, newStamps } = req.body;
 
-    if (!customerId || typeof newStamps !== "number") {
-      return res.status(400).json({ error: "customerId and numeric newStamps required" });
+
+
+// --- Overwrite customer loyalty stamps directly ---
+router.post("/loyalty/update-stamps", async (req, res) => {
+  try {
+    const { customerId, additionalStamps } = req.body; // <-- matches front-end
+
+    if (!customerId || typeof additionalStamps !== "number") {
+      return res.status(400).json({ error: "customerId and numeric additionalStamps required" });
     }
 
-    const userRef = db.collection("customers").doc(customerId); // Use exact ID
+    const userRef = db.collection("customers").doc(customerId); // exact ID
     const userDoc = await userRef.get();
 
     if (!userDoc.exists) {
@@ -452,24 +455,25 @@ router.post("/loyalty/update-stamps", async (req, res) => {
     const customerData = userDoc.data();
     customerData.loyalty = customerData.loyalty || { points: 0, stamps: 0, count: 0 };
 
-    // Directly overwrite the stamps
-    customerData.loyalty.stamps = newStamps;
+    // ---- Directly set the stamps value from front-end ----
+    customerData.loyalty.stamps = additionalStamps;
     customerData.updatedAt = new Date();
 
     await userRef.set(customerData, { merge: true });
 
-    res.status(200).json({
+    console.log(`✅ Updated loyalty for ${customerId}:`, customerData.loyalty);
+
+    return res.status(200).json({
       message: "✅ Customer stamps updated successfully",
       customerId,
       updatedLoyalty: customerData.loyalty
     });
-
-    console.log(`✅ Updated loyalty for ${customerId}:`, customerData.loyalty);
   } catch (error) {
     console.error("❌ Error updating customer stamps:", error);
-    res.status(500).json({ error: "Internal server error." });
+    return res.status(500).json({ error: "Internal server error." });
   }
 });
+
 
 
 
