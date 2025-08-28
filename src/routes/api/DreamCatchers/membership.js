@@ -435,8 +435,6 @@ router.get('/loyalty-customers', async (req, res) => {
 });
 
 
-
-// Route to update stamps/loyalty for a customer via main API
 router.post("/loyalty/update-stamps", async (req, res) => {
   try {
     const { customerId, additionalStamps } = req.body;
@@ -455,7 +453,6 @@ router.post("/loyalty/update-stamps", async (req, res) => {
     const customerData = userDoc.data();
     customerData.loyalty = customerData.loyalty || { points: 0, stamps: 0, count: 0 };
 
-    // Update stamps and count
     const newTotalCount = (customerData.loyalty.count || 0) + additionalStamps;
     const newStamps = Math.floor(newTotalCount / 5);
     const newRemainder = newTotalCount % 5;
@@ -469,14 +466,13 @@ router.post("/loyalty/update-stamps", async (req, res) => {
     res.status(200).json({
       message: "✅ Customer stamps updated successfully",
       customerId,
-      updatedLoyalty: customerData.loyalty,
+      updatedLoyalty: customerData.loyalty
     });
   } catch (error) {
     console.error("❌ Error updating customer stamps:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
-
 
 
 
