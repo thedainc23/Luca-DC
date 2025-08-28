@@ -441,9 +441,9 @@ router.post("/loyalty/update-stamps", async (req, res) => {
   try {
     const { customerId, additionalStamps } = req.body; // <-- matches front-end
 
-    if (!customerId || typeof additionalStamps !== "number") {
-      return res.status(400).json({ error: "customerId and numeric additionalStamps required" });
-    }
+    // if (!customerId || typeof additionalStamps !== "number") {
+    //   return res.status(400).json({ error: "customerId and numeric additionalStamps required" });
+    // }
 
     const userRef = db.collection("customers").doc(customerId); // exact ID
     const userDoc = await userRef.get();
