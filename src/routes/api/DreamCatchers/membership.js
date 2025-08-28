@@ -268,7 +268,7 @@ router.post('/loyalty-points/refund', async (req, res) => {
               // Split the product title into an array of words
             const wordsInTitle = productTitle.split(" ");  // Splitting by spaces
             // Check if the product title contains "FREE" (case-sensitive)
-            if (productTitle.includes("FREE - ")) {
+            if (productTitle.includes(productTitle.includes("Hair Extensions") || productTitle.includes("20 Inch") || productTitle.includes("24 Inch"))) {
                 console.log(`Matched FREE product: ${productTitle} with quantity ${quantity}`);
                 totalFreeProducts += quantity;  // Add the quantity of matching products to the total
             }
