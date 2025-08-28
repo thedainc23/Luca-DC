@@ -433,16 +433,16 @@ router.get('/loyalty-customers', async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 });
-
 router.post("/loyalty/update-stamps", async (req, res) => {
+  console.log("Request Body:", req.body); // Debug
   try {
-    const { customerId, additionalStamps } = req.body;
+    const { customerId, newStamps } = req.body;
 
-    if (!customerId || typeof additionalStamps !== "number") {
-      return res.status(400).json({ error: "customerId and numeric additionalStamps required" });
+    if (!customerId || typeof newStamps !== "number") {
+      return res.status(400).json({ error: "customerId and numeric newStamps required" });
     }
 
-    const userRef = db.collection("customers").doc(customerId); // Use the ID exactly as sent
+    const userRef = db.collection("customers").doc(customerId); // Use exact ID
     const userDoc = await userRef.get();
 
     if (!userDoc.exists) {
@@ -452,12 +452,8 @@ router.post("/loyalty/update-stamps", async (req, res) => {
     const customerData = userDoc.data();
     customerData.loyalty = customerData.loyalty || { points: 0, stamps: 0, count: 0 };
 
-    const totalCount = (customerData.loyalty.count || 0) + additionalStamps;
-    const newStamps = Math.floor(totalCount / 5);
-    const remainder = totalCount % 5;
-
-    customerData.loyalty.stamps += newStamps;
-    customerData.loyalty.count = remainder;
+    // Directly overwrite the stamps
+    customerData.loyalty.stamps = newStamps;
     customerData.updatedAt = new Date();
 
     await userRef.set(customerData, { merge: true });
@@ -474,6 +470,7 @@ router.post("/loyalty/update-stamps", async (req, res) => {
     res.status(500).json({ error: "Internal server error." });
   }
 });
+
 
 
 
