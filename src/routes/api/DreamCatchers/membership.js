@@ -434,4 +434,52 @@ router.get('/loyalty-customers', async (req, res) => {
     }
 });
 
+
+
+// Route to update stamps/loyalty for a customer via main API
+router.post("/loyalty/update-stamps", async (req, res) => {
+  try {
+    const { customerId, additionalStamps } = req.body;
+
+    if (!customerId || typeof additionalStamps !== "number") {
+      return res.status(400).json({ error: "customerId and numeric additionalStamps required" });
+    }
+
+    const userRef = db.collection("customers").doc(`DC-${customerId}`);
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
+      return res.status(404).json({ error: "Customer not found" });
+    }
+
+    const customerData = userDoc.data();
+    customerData.loyalty = customerData.loyalty || { points: 0, stamps: 0, count: 0 };
+
+    // Update stamps and count
+    const newTotalCount = (customerData.loyalty.count || 0) + additionalStamps;
+    const newStamps = Math.floor(newTotalCount / 5);
+    const newRemainder = newTotalCount % 5;
+
+    customerData.loyalty.stamps += newStamps;
+    customerData.loyalty.count = newRemainder;
+    customerData.updatedAt = new Date();
+
+    await userRef.set(customerData, { merge: true });
+
+    res.status(200).json({
+      message: "✅ Customer stamps updated successfully",
+      customerId,
+      updatedLoyalty: customerData.loyalty,
+    });
+  } catch (error) {
+    console.error("❌ Error updating customer stamps:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
+
+
+
+
 module.exports = router;
