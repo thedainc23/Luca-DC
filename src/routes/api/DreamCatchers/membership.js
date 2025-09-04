@@ -225,70 +225,101 @@ router.post('/webhook/orders/paid', async (req, res) => {
     }
 });
 
-// Express route to get loyalty points for a customer
+// Express route to handle refunds and adjust loyalty correctly
 router.post('/loyalty-points/refund', async (req, res) => {
-    try {
-        const order =  req.body.order_id;
-        const url = `https://${SHOPIFY_STORE}/admin/api/2023-01/orders/${order}.json`;
-        const response = await axios.get(`https://${SHOPIFY_STORE}/admin/api/2023-04/orders/${order}.json`, {
-            headers: {
-              'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
-            },
-          });
-        
-          // Handle the response
-          console.log(response.data);
-        
-          // Extract customer ID
-        const customer = response.data.order.customer.id;
-        const lineItems = req.body.refund_line_items.map(item => ({
-            productId: item.line_item.product_id || null,
-            varientID: item.line_item.variant_id || null,
-            productTitle: item.line_item.title || "Unknown Product",
-            productName: item.line_item.name || "Unknown Product",
-            quantity: item.quantity || 0,
-            price: parseFloat(item.line_item.price).toFixed(2) || "0.00",
-            tags: Array.isArray(item.line_item.tags) ? item.line_item.tags : [], // Ensure tags is an array
-            sku: item.line_item.sku || null,
-        }));
-        const userRef = db.collection('customers').doc(`DC-${customer}`);
-        const userDoc = await userRef.get();
-        const userData = userDoc.data();
-        let currentStamps = userData.loyalty.stamps;
+  try {
+    const orderId = req.body.order_id;
 
-         
-         let totalFreeProducts = 0;
+    // Pull order from Shopify (in case we need context)
+    const response = await axios.get(
+      `https://${SHOPIFY_STORE}/admin/api/2023-04/orders/${orderId}.json`,
+      {
+        headers: {
+          'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
+        },
+      }
+    );
 
-         for (const item of lineItems) {
-            const productTitle = item.productName;  // Default to empty string if title is missing, and trim spaces
-            const quantity = item.quantity || 0;  // Default to 0 if quantity is missing
-            console.log(productTitle)
-            // Log the raw product title and quantity to check its value
-            console.log(`Checking raw product title: '${productTitle}' | Quantity: ${quantity}`);
-              // Split the product title into an array of words
-            const wordsInTitle = productTitle.split(" ");  // Splitting by spaces
-            // Check if the product title contains "FREE" (case-sensitive)
-            if (productTitle.includes(productTitle.includes("Hair Extensions") || productTitle.includes("20 Inch") || productTitle.includes("24 Inch"))) {
-                console.log(`Matched FREE product: ${productTitle} with quantity ${quantity}`);
-                totalFreeProducts += quantity;  // Add the quantity of matching products to the total
-            }
-        }
+    const shopifyOrder = response.data.order;
+    const customerId = shopifyOrder.customer.id;
 
-        if(totalFreeProducts > 0){
-            currentStamps = currentStamps - totalFreeProducts;  // Add stamps to the customer's loyalty points
-        // Update Firestore with the new or updated customer data
-            await userRef.update({
-                'loyalty.stamps': currentStamps
-            });
-            const refunds = db.collection('refunds').doc(`DC-${req.body.order_id}`);
-            await refunds.set(req.body);
-        }
-        res.status(200).send("✅ Refund processed, points and stamps deducted.");
-    } catch (error) {
-        console.error("❌ Error processing refund:", error);
-        res.status(500).send("Internal server error.");
+    // Map refunded items
+    const refundedItems = req.body.refund_line_items.map(item => ({
+      productId: item.line_item.product_id || null,
+      variantId: item.line_item.variant_id || null,
+      productTitle: item.line_item.title || "Unknown Product",
+      productName: item.line_item.name || "Unknown Product",
+      quantity: item.quantity || 0,
+      price: parseFloat(item.line_item.price).toFixed(2) || "0.00",
+      sku: item.line_item.sku || null,
+    }));
+
+    // Get current loyalty from Firestore
+    const userRef = db.collection('customers').doc(`DC-${customerId}`);
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
+      return res.status(404).send("❌ Customer not found.");
     }
+
+    let customerData = userDoc.data();
+    customerData.loyalty = customerData.loyalty || { points: 0, stamps: 0, count: 0 };
+
+    let refundCount = 0;
+
+    // Count only qualifying items
+    for (const item of refundedItems) {
+      const productTitle = item.productName;
+      const quantity = item.quantity || 0;
+
+      if (
+        productTitle.includes("Hair Extensions") ||
+        productTitle.includes("20 Inch") ||
+        productTitle.includes("24 Inch")
+      ) {
+        refundCount += quantity;
+      }
+    }
+
+    if (refundCount > 0) {
+      // Reverse count logic
+      let currentCount = customerData.loyalty.count || 0;
+      let currentStamps = customerData.loyalty.stamps || 0;
+
+      let combinedCount = currentCount - refundCount;
+
+      // If combinedCount drops below 0, we need to roll back stamps
+      while (combinedCount < 0 && currentStamps > 0) {
+        combinedCount += 5; // pull back one stamp worth
+        currentStamps -= 1;
+      }
+
+      // Never let negative values
+      if (combinedCount < 0) combinedCount = 0;
+      if (currentStamps < 0) currentStamps = 0;
+
+      customerData.loyalty.count = combinedCount;
+      customerData.loyalty.stamps = currentStamps;
+      customerData.updatedAt = new Date();
+
+      await userRef.set(customerData, { merge: true });
+
+      // Store refund record
+      const refunds = db.collection('refunds').doc(`DC-${orderId}`);
+      await refunds.set(req.body);
+
+      console.log(
+        `✅ Refund processed. Customer ${customerId}: -${refundCount} count, stamps=${currentStamps}, count=${combinedCount}`
+      );
+    }
+
+    res.status(200).send("✅ Refund processed, points and stamps adjusted.");
+  } catch (error) {
+    console.error("❌ Error processing refund:", error);
+    res.status(500).send("Internal server error.");
+  }
 });
+
 
 
 // Express route to get loyalty points for a customer
