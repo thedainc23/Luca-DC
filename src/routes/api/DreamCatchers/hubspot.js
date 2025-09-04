@@ -170,23 +170,29 @@ router.post('/webhook/orders/paid', async (req, res) => {
       const productSku = item.sku;
       if (productSku.includes(EXPECTED_SKU)) {
         // --- FIXED PARSING LOGIC ---
-        const [cityState, , , datePart] = item.title.split('-').map(s => s.trim());
+// Split by "-" but only take the first 2 meaningful parts
+const titleParts = item.title.split('-').map(s => s.trim());
 
-        // Extract location (City + State, drop USA if present)
-        const cityStateParts = cityState.split(',').map(s => s.trim());
-        const city = cityStateParts[0].replace(/\s+/g, '-'); // handles multi-word
-        const state = cityStateParts[1];
-        const location = `${city}-${state}`;
+// cityState = first chunk ("Dallas, TX, USA")
+// datePart  = second chunk ("Sept 7th & 8th, 2025")
+const cityState = titleParts[0];
+const datePart = titleParts[1];
 
-        // Extract date info
-        const dateTokens = datePart.split(/\s+/);
-        const month = dateTokens[0];
-        const dayRange = `${dateTokens[1].replace(/\D/g, '')}-${dateTokens[3].replace(/\D/g, '')}`;
-        const year = dateTokens[4].replace(/\D/g, '');
+// Extract location (City + State, drop USA if present)
+const cityStateParts = cityState.split(',').map(s => s.trim());
+const city = cityStateParts[0].replace(/\s+/g, '-'); // handles multi-word
+const state = cityStateParts[1];
+const location = `${city}-${state}`;
 
-        // Generate new tag
-        const newTag = `${location}-${month}-${dayRange}-${year}`;
-        // --- END FIX ---
+// Extract date info
+const dateTokens = datePart.split(/\s+/);
+const month = dateTokens[0];
+const dayRange = `${dateTokens[1].replace(/\D/g, '')}-${dateTokens[3].replace(/\D/g, '')}`;
+const year = dateTokens[4].replace(/\D/g, '');
+
+const newTag = `${location}-${month}-${dayRange}-${year}`;
+// --- END FIX ---
+
 
         // Get existing order tags
         const shopifyGetUrl = `https://${SHOPIFY_STORE}/admin/api/2023-01/orders/${orderId}.json`;
