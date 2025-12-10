@@ -1,0 +1,21 @@
+name: Github Actions
+on: [push]
+jobs:
+  build:
+    # Allow the job to fetch a GitHub ID token
+    permissions:
+      id-token: write
+      contents: read
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v1'
+        with:
+          create_credentials_file: true
+          workload_identity_provider: 'projects/656377826933/locations/global/workloadIdentityPools/dreamcatcher-github-identity/providers/github'
+          service_account: 'firebase-adminsdk-fbsvc@dreamcatchers-test.iam.gserviceaccount.com'
